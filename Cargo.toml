@@ -28,3 +28,6 @@ lalrpop = "0.22"
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"
+
+[package.metadata.release]
+pre-release-hook = ["git", "cliff", "-o", "CHANGELOG.md", "--tag", "{{version}}" ]
