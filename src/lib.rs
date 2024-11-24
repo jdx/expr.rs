@@ -206,6 +206,18 @@ enum Expr {
     Pipe(Box<Expr>, Box<Expr>),
 }
 
+impl Expr {
+    pub fn unescape_str(s: &str) -> Self {
+        Expr::String(s
+            .replace("\\\\", "\\")
+            .replace("\\n", "\n")
+            .replace("\\r", "\r")
+            .replace("\\t", "\t")
+            .replace("\\\"", "\""))
+    }
+}
+
+
 #[derive(Debug)]
 enum Opcode {
     Add,
@@ -667,7 +679,7 @@ bar`"#
     fn context() {
         let ctx = [("Version", "v1.0.0")];
         let p = ExprParser::new(ctx);
-        assert_str_eq!(p.eval(r#"Version matches "^v\d+\.\d+\.\d+""#).unwrap().to_string(), "true");
+        assert_str_eq!(p.eval(r#"Version matches "^v\\d+\\.\\d+\\.\\d+""#).unwrap().to_string(), "true");
     }
 
     #[test]
