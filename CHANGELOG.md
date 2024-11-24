@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.3] - 2024-11-24
+
+### 🐛 Bug Fixes
+
+- Make ExprProgram cloneable
+
 ## [0.1.2] - 2024-11-24
 
 ### 🚀 Features
@@ -12,6 +18,10 @@ All notable changes to this project will be documented in this file.
 
 - Added Debug and Clone to parser
 - String escaping
+
+### ⚙️ Miscellaneous Tasks
+
+- Release expr-lang version 0.1.2
 
 ## [0.1.1] - 2024-11-24
 
