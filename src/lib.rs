@@ -194,7 +194,7 @@ enum Opcode {
 /// let p = ExprParser::new(ctx);
 /// assert_eq!(p.eval("foo + bar").unwrap().to_string(), "3");
 /// ```
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub struct ExprParser {
     ctx: HashMap<String, ExprValue>,
     functions: HashMap<String, fn(Vec<ExprValue>) -> ExprValue>,
