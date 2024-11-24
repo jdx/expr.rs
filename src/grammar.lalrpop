@@ -1,0 +1,111 @@
+use std::str::FromStr;
+use crate::{Expr, Opcode};
+
+grammar;
+
+pub Expr: Box<Expr> = {
+    <e:Expr> <op:ExprOp> <f:Factor> => Box::new(Expr::Op(e, op, f)),
+    <u1:Unary> "?" <u2:Unary> ":" <u3:Unary> => Box::new(Expr::Ternary(u1, u2, u3)),
+    <u1:Unary> "??" <u2:Unary> => Box::new(Expr::NilCoalesce(u1, u2)),
+    <e:Expr> "." <f:ID> => Box::new(Expr::Op(e, Opcode::Index, Box::new(Expr::String(f)))),
+    <e:Expr> "?." <f:ID> => Box::new(Expr::Op(e, Opcode::OptIndex, Box::new(Expr::String(f)))),
+    <e:Expr> "[" <i:Expr> "]" => Box::new(Expr::Op(e, Opcode::Index, i)),
+    <e:Expr> "|" <f:ID> "(" <a:Comma<Expr>> ")" => Box::new(Expr::Pipe(e, Box::new(Expr::Func(f, a)))),
+    <t:Expr> "[" <a:Expr> ":" <b:Expr> "]" => Box::new(Expr::Slice(t, a, b)),
+    <t:Expr> "[" <a:Expr> ":" "]" => Box::new(Expr::Slice(t, a, Box::new(Expr::Nil))),
+    <t:Expr> "[" ":" <b:Expr> "]" => Box::new(Expr::Slice(t, Box::new(Expr::Nil), b)),
+    <t:Expr> "[:]" => Box::new(Expr::Slice(t, Box::new(Expr::Nil), Box::new(Expr::Nil))),
+    Factor,
+};
+
+ExprOp: Opcode = {
+    "+" => Opcode::Add,
+    "-" => Opcode::Sub,
+    "&&" => Opcode::And,
+    "and" => Opcode::And,
+    "||" => Opcode::Or,
+    "or" => Opcode::Or,
+    "==" => Opcode::Eq,
+    "!=" => Opcode::Ne,
+    "<" => Opcode::Lt,
+    "<=" => Opcode::Lte,
+    ">" => Opcode::Gt,
+    ">=" => Opcode::Gte,
+    "contains" => Opcode::Contains,
+    "startsWith" => Opcode::StartsWith,
+    "endsWith" => Opcode::EndsWith,
+    "matches" => Opcode::Matches,
+    "in" => Opcode::In,
+};
+
+Factor: Box<Expr> = {
+    <f1:Factor> <op:FactorOp> <f2:Unary> => Box::new(Expr::Op(f1, op, f2)),
+    Unary,
+};
+
+FactorOp: Opcode = {
+    "*" => Opcode::Mul,
+    "/" => Opcode::Div,
+    "%" => Opcode::Mod,
+    "^" => Opcode::Pow,
+    "**" => Opcode::Pow,
+};
+
+Unary: Box<Expr> = {
+    <f:ID>"(" <a:Comma<Term>> ")" => Box::new(Expr::Func(f, a)),
+    "!" <t:Unary> => Box::new(Expr::Not(t)),
+    "not" <t:Unary> => Box::new(Expr::Not(t)),
+    Term,
+};
+
+Term: Box<Expr> = {
+    <n:Num> => Box::new(Expr::Number(n)),
+    <f:Float> => Box::new(Expr::Float(f)),
+    <s:String> => Box::new(Expr::String(s)),
+    <t:Bool> => Box::new(Expr::Bool(t)),
+    <n:Nil> => Box::new(Expr::Nil),
+    "[" <a:Comma<Expr>> "]" => Box::new(Expr::Array(a)),
+    "{" <m:Comma<HashEntry>> "}" => Box::new(Expr::Map(m.into_iter().collect())),
+    "(" <Expr> ")",
+};
+
+HashEntry: (String, Box<Expr>) = {
+    <k:ID> ":" <v:Expr> => (k, v)
+};
+
+Comma<T>: Vec<T> = { // (0)
+    <v:(<T> ",")*> <e:T?> => match e { // (1)
+        None=> v,
+        Some(e) => {
+            let mut v = v;
+            v.push(e);
+            v
+        }
+    }
+};
+
+Num: i32 = {
+    <s:r"-?[0-9]+"> => i32::from_str(s).unwrap()
+};
+
+Float: f64 = {
+    <s:r"[0-9]+\.[0-9]+"> => f64::from_str(s).unwrap()
+};
+
+Bool: bool = {
+    "true" => true,
+    "false" => false,
+};
+
+String: String = {
+    <s:r#""[^"]*""#> => s[1..s.len()-1].to_string(),
+    <s:r#"`[^`]*`"#> => s[1..s.len()-1].to_string(),
+};
+
+Nil: () = {
+    "nil" => ()
+};
+
+ID: String = {
+    <s:r"[a-zA-Z_][a-zA-Z0-9_]*"> => s.to_string()
+};

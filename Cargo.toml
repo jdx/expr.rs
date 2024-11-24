@@ -1,0 +1,30 @@
+[package]
+name = "expr-lang"
+version = "0.1.0"
+edition = "2021"
+authors = ["@jdx"]
+license = "MIT"
+documentation = "https://docs.rs/expr-lang"
+homepage = "https://github.com/jdx/expr-lang"
+repository = "https://github.com/jdx/expr-lang"
+description = "Implementation of expr language in Rust"
+include = [
+    "/src/**/*.lalrpop",
+    "/src/**/*.rs",
+    "/build.rs",
+]
+
+[lib]
+name = "expr"
+
+[dependencies]
+indexmap = "2"
+lalrpop-util = { version = "0.22", features = ["lexer", "unicode"] }
+regex = "1"
+thiserror = "2"
+
+[build-dependencies]
+lalrpop = "0.22"
+
+[dev-dependencies]
+pretty_assertions = "1.4.1"
