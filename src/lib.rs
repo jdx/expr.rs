@@ -35,6 +35,7 @@ macro_rules! bail {
 }
 
 /// A parsed expr program that can be run
+#[derive(Debug, Clone)]
 pub struct ExprProgram {
     expr: Expr,
 }
@@ -187,7 +188,7 @@ impl Display for ExprValue {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Expr {
     Number(i32),
     Float(f64),
@@ -218,7 +219,7 @@ impl Expr {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Opcode {
     Add,
     Sub,
