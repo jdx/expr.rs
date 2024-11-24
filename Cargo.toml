@@ -1,0 +1,15 @@
+[package]
+name = "expr-rs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+indexmap = "2"
+lalrpop-util = { version = "0.22", features = ["lexer", "unicode"] }
+thiserror = "2"
+
+[build-dependencies]
+lalrpop = "0.22"
+
+[dev-dependencies]
+pretty_assertions = "1.4.1"

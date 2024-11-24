@@ -1,0 +1,51 @@
+use std::str::FromStr;
+use crate::ast::{Expr, Opcode};
+
+grammar;
+
+pub Expr: Box<Expr> = {
+    Expr ExprOp Factor => Box::new(Expr::Op(<>)),
+    Factor,
+};
+
+ExprOp: Opcode = {
+    "+" => Opcode::Add,
+    "-" => Opcode::Sub,
+    "&&" => Opcode::And,
+    "and" => Opcode::And,
+    "||" => Opcode::Or,
+    "or" => Opcode::Or,
+};
+
+Factor: Box<Expr> = {
+    Factor FactorOp Term => Box::new(Expr::Op(<>)),
+    Term,
+};
+
+FactorOp: Opcode = {
+    "*" => Opcode::Mul,
+    "/" => Opcode::Div,
+};
+
+Term: Box<Expr> = {
+    Num => Box::new(Expr::Number(<>)),
+    String => Box::new(Expr::String(<>)),
+    Bool => Box::new(Expr::Bool(<>)),
+    "(" <Expr> ")"
+};
+
+Num: i32 = {
+    r"[0-9]+" => i32::from_str(<>).unwrap()
+};
+
+String: String = {
+    r#""[^"]*""# => {
+        let s = <>.trim_matches('"').to_string();
+        s
+    }
+};
+
+Bool: bool = {
+    "true" => true,
+    "false" => false,
+};
