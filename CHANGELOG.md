@@ -2,11 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.4] - 2024-11-24
+
+### 🐛 Bug Fixes
+
+- Prep
+
 ## [0.1.3] - 2024-11-24
 
 ### 🐛 Bug Fixes
 
 - Make ExprProgram cloneable
+
+### ⚙️ Miscellaneous Tasks
+
+- Release expr-lang version 0.1.3
 
 ## [0.1.2] - 2024-11-24
 
