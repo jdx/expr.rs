@@ -64,6 +64,7 @@ Term: Box<Expr> = {
     <s:String> => Box::new(Expr::String(s)),
     <t:Bool> => Box::new(Expr::Bool(t)),
     <n:Nil> => Box::new(Expr::Nil),
+    <i:ID> => Box::new(Expr::ID(i)),
     "[" <a:Comma<Expr>> "]" => Box::new(Expr::Array(a)),
     "{" <m:Comma<HashEntry>> "}" => Box::new(Expr::Map(m.into_iter().collect())),
     "(" <Expr> ")",

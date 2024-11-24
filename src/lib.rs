@@ -146,6 +146,7 @@ enum Expr {
     String(String),
     Bool(bool),
     Nil,
+    ID(String),
     Array(Vec<Box<Expr>>),
     Map(IndexMap<String, Box<Expr>>),
     Not(Box<Expr>),
@@ -183,9 +184,18 @@ enum Opcode {
 }
 
 /// Main struct for parsing and evaluating expr programs
+///
+/// Example:
+///
+/// ```
+/// use std::collections::HashMap;
+/// use expr::ExprParser;
+/// let ctx = HashMap::from([("foo", 1), ("bar", 2)]);
+/// let p = ExprParser::new(ctx);
+/// assert_eq!(p.eval("foo + bar").unwrap().to_string(), "3");
+/// ```
 #[derive(Default)]
 pub struct ExprParser {
-    #[allow(unused)] // TODO: remove this
     ctx: HashMap<String, ExprValue>,
     functions: HashMap<String, fn(Vec<ExprValue>) -> ExprValue>,
 }
@@ -265,6 +275,13 @@ impl ExprParser {
             Expr::Bool(b) => b.into(),
             Expr::Float(f) => f.into(),
             Expr::Nil => ExprValue::Nil,
+            Expr::ID(id) => {
+                if let Some(value) = self.ctx.get(&id) {
+                    value.clone()
+                } else {
+                    bail!("Unknown variable: {id}")
+                }
+            }
             Expr::Array(a) => a
                 .into_iter()
                 .map(|e| self.parse(*e))
@@ -447,9 +464,7 @@ impl ExprParser {
                         (lhs, rhs) => bail!("Invalid operands for ends_with: {lhs:?} and {rhs:?}"),
                     },
                     Opcode::Matches => match (lhs, rhs) {
-                        (ExprValue::String(lhs), ExprValue::String(rhs)) => {
-                            regex::Regex::new(&rhs)?.is_match(&lhs).into()
-                        }
+                        (ExprValue::String(lhs), ExprValue::String(rhs)) => regex::Regex::new(&rhs)?.is_match(&lhs).into(),
                         (lhs, rhs) => bail!("Invalid operands for matches: {lhs:?} and {rhs:?}"),
                     },
                     Opcode::In => match (lhs, rhs) {
@@ -598,6 +613,13 @@ bar`"#
         assert_str_eq!(eval(r#"{foo: "bar"}?.bar?.foo"#), r#"nil"#);
         assert_str_eq!(eval(r#""foo" in {foo: "bar"}"#), "true");
         assert_str_eq!(eval(r#""bar" in {foo: "bar"}"#), "false");
+    }
+
+    #[test]
+    fn context() {
+        let ctx = [("Version", "v1.0.0")];
+        let p = ExprParser::new(ctx);
+        assert_str_eq!(p.eval(r#"Version matches "^v\d+\.\d+\.\d+""#).unwrap().to_string(), "true");
     }
 
     #[test]
