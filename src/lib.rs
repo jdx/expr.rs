@@ -2,9 +2,11 @@
 //!
 //! Example:
 //! ```
+//! use std::collections::HashMap;
 //! use expr::ExprParser;
-//! let p = ExprParser::default();
-//! assert_eq!(p.eval("1 + 2").unwrap().to_string(), "3");
+//! let p = ExprParser::new();
+//! let ctx: HashMap<String, String> = HashMap::new();
+//! assert_eq!(p.eval("1 + 2", ctx).unwrap().to_string(), "3");
 //! ```
 
 use indexmap::IndexMap;
@@ -252,40 +254,30 @@ enum Opcode {
 /// use std::collections::HashMap;
 /// use expr::ExprParser;
 /// let ctx = HashMap::from([("foo", 1), ("bar", 2)]);
-/// let p = ExprParser::new(ctx);
-/// assert_eq!(p.eval("foo + bar").unwrap().to_string(), "3");
+/// let p = ExprParser::new();
+/// assert_eq!(p.eval("foo + bar", ctx).unwrap().to_string(), "3");
 /// ```
 #[derive(Default, Debug, Clone)]
 pub struct ExprParser {
-    ctx: HashMap<String, ExprValue>,
     functions: HashMap<String, fn(Vec<ExprValue>) -> ExprValue>,
 }
 
 lalrpop_mod!(grammar);
 
 impl ExprParser {
-    /// Create a new parser with a context struct containing variables
-    pub fn new<K, V>(ctx: impl IntoIterator<Item=(K, V)>) -> Self
-    where
-        K: AsRef<str>,
-        V: Into<ExprValue>,
-    {
-        Self {
-            ctx: ctx
-                .into_iter()
-                .map(|(k, v)| (k.as_ref().to_string(), v.into()))
-                .collect(),
-            ..Default::default()
-        }
+    /// Create a new parser
+    pub fn new() -> Self {
+        Default::default()
     }
 
     /// Add a function for expr programs to call
     ///
     /// Example:
     /// ```
+    /// use std::collections::HashMap;
     /// use expr::{ExprParser, ExprValue};
     ///
-    /// let mut p = ExprParser::default();
+    /// let mut p = ExprParser::new();
     /// p.add_function("add", |args| {
     ///   let mut sum = 0;
     ///     for arg in args {
@@ -297,7 +289,8 @@ impl ExprParser {
     ///     }
     ///   sum.into()
     /// });
-    /// assert_eq!(p.eval("add(1, 2, 3)").unwrap().to_string(), "6");
+    /// let ctx: HashMap<String, String> = HashMap::new();
+    /// assert_eq!(p.eval("add(1, 2, 3)", ctx).unwrap().to_string(), "6");
     /// ```
     pub fn add_function(&mut self, name: &str, f: fn(Vec<ExprValue>) -> ExprValue) {
         self.functions.insert(name.to_string(), f);
@@ -313,23 +306,36 @@ impl ExprParser {
     }
 
     /// Run a compiled expr program
-    pub fn run(&self, program: ExprProgram) -> Result<ExprValue> {
-        self.parse(program.expr)
+    pub fn run<K, V>(&self, program: ExprProgram, ctx: impl IntoIterator<Item=(K, V)>) -> Result<ExprValue>
+    where
+        K: AsRef<str>,
+        V: Into<ExprValue>,
+    {
+        let ctx = ctx.into_iter().map(|(k, v)| (k.as_ref().to_string(), v.into())).collect();
+        self.parse(program.expr, ctx)
     }
 
     /// Compile and run an expr program in one step
     ///
     /// Example:
     /// ```
+    /// use std::collections::HashMap;
     /// use expr::ExprParser;
     /// let p = ExprParser::default();
-    /// assert_eq!(p.eval("1 + 2").unwrap().to_string(), "3");
+    /// let ctx: HashMap<String, String> = HashMap::new();
+    /// assert_eq!(p.eval("1 + 2", ctx).unwrap().to_string(), "3");
     /// ```
-    pub fn eval(&self, code: &str) -> Result<ExprValue> {
-        self.run(self.compile(code)?)
+    pub fn eval<K, V>(&self, code: &str, ctx: impl IntoIterator<Item=(K, V)>) -> Result<ExprValue>
+    where
+        K: AsRef<str>,
+        V: Into<ExprValue>,
+    {
+        let program = self.compile(code)?;
+        self.run(program, ctx)
     }
 
-    fn parse(&self, expr: Expr) -> Result<ExprValue> {
+    fn parse(&self, expr: Expr, ctx: IndexMap<String, ExprValue>) -> Result<ExprValue> {
+        let parse = |expr| self.parse(expr, ctx.clone());
         let value: ExprValue = match expr {
             Expr::Number(n) => n.into(),
             Expr::String(s) => s.into(),
@@ -337,7 +343,7 @@ impl ExprParser {
             Expr::Float(f) => f.into(),
             Expr::Nil => ExprValue::Nil,
             Expr::ID(id) => {
-                if let Some(value) = self.ctx.get(&id) {
+                if let Some(value) = ctx.get(&id) {
                     value.clone()
                 } else {
                     bail!("Unknown variable: {id}")
@@ -345,18 +351,18 @@ impl ExprParser {
             }
             Expr::Array(a) => a
                 .into_iter()
-                .map(|e| self.parse(*e))
+                .map(|e| parse(*e))
                 .collect::<Result<Vec<ExprValue>>>()?
                 .into(),
             Expr::Map(m) => m
                 .into_iter()
-                .map(|(k, v)| Ok((k, self.parse(*v)?)))
+                .map(|(k, v)| Ok((k, parse(*v)?)))
                 .collect::<Result<IndexMap<String, ExprValue>>>()?
                 .into(),
             Expr::Func(name, args) => {
                 let args = args
                     .into_iter()
-                    .map(|e| self.parse(*e))
+                    .map(|e| parse(*e))
                     .collect::<Result<Vec<_>>>()?;
                 if let Some(f) = self.functions.get(&name) {
                     f(args)
@@ -364,28 +370,28 @@ impl ExprParser {
                     bail!("Unknown function: {name}")
                 }
             }
-            Expr::Not(expr) => match self.parse(*expr)? {
+            Expr::Not(expr) => match parse(*expr)? {
                 ExprValue::Bool(b) => (!b).into(),
                 ExprValue::Nil => true.into(),
                 value => bail!("Invalid operand for !: {value:?}"),
             },
-            Expr::Ternary(cond, then, el) => match self.parse(*cond)? {
-                ExprValue::Bool(true) => self.parse(*then)?,
-                ExprValue::Bool(false) => self.parse(*el)?,
+            Expr::Ternary(cond, then, el) => match parse(*cond)? {
+                ExprValue::Bool(true) => parse(*then)?,
+                ExprValue::Bool(false) => parse(*el)?,
                 value => bail!("Invalid condition for ?: {value:?}"),
             }
-            Expr::NilCoalesce(lhs, rhs) => match self.parse(*lhs)? {
-                ExprValue::Nil => self.parse(*rhs)?,
+            Expr::NilCoalesce(lhs, rhs) => match parse(*lhs)? {
+                ExprValue::Nil => parse(*rhs)?,
                 value => value,
             },
-            Expr::Slice(arr, lhs, rhs) => match self.parse(*arr)? {
+            Expr::Slice(arr, lhs, rhs) => match parse(*arr)? {
                 ExprValue::Array(mut a) => {
-                    let lhs = match self.parse(*lhs)? {
+                    let lhs = match parse(*lhs)? {
                         ExprValue::Number(n) => n,
                         ExprValue::Nil => 0,
                         lhs => bail!("Invalid left-hand side of [{lhs:?}:{rhs:?}]"),
                     };
-                    let rhs = match self.parse(*rhs)? {
+                    let rhs = match parse(*rhs)? {
                         ExprValue::Number(n) => n,
                         ExprValue::Nil => a.len() as i32,
                         rhs => bail!("Invalid right-hand side of [{lhs:?}:{rhs:?}]"),
@@ -413,12 +419,12 @@ impl ExprParser {
                 }
                 arr => bail!("Invalid operands for [: {arr:?}, {lhs:?}, {rhs:?}"),
             },
-            Expr::Pipe(lhs, rhs) => match (self.parse(*lhs)?, *rhs) {
+            Expr::Pipe(lhs, rhs) => match (parse(*lhs)?, *rhs) {
                 (lhs, Expr::Func(name, args)) => {
                     if let Some(f) = self.functions.get(&name) {
                         let args = args
                             .into_iter()
-                            .map(|e| self.parse(*e))
+                            .map(|e| parse(*e))
                             .collect::<Result<Vec<ExprValue>>>()?
                             .into_iter()
                             .chain(once(lhs))
@@ -431,8 +437,8 @@ impl ExprParser {
                 _ => bail!("Invalid right-hand side of |"),
             },
             Expr::Op(lhs, op, rhs) => {
-                let lhs = self.parse(*lhs)?;
-                let rhs = self.parse(*rhs)?;
+                let lhs = parse(*lhs)?;
+                let rhs = parse(*rhs)?;
                 match op {
                     Opcode::Add => match (lhs, rhs) {
                         (ExprValue::Number(lhs), ExprValue::Number(rhs)) => (lhs + rhs).into(),
@@ -679,14 +685,13 @@ bar`"#
     #[test]
     fn context() {
         let ctx = [("Version", "v1.0.0")];
-        let p = ExprParser::new(ctx);
-        assert_str_eq!(p.eval(r#"Version matches "^v\\d+\\.\\d+\\.\\d+""#).unwrap().to_string(), "true");
+        let p = ExprParser::new();
+        assert_str_eq!(p.eval(r#"Version matches "^v\\d+\\.\\d+\\.\\d+""#, ctx).unwrap().to_string(), "true");
     }
 
     #[test]
     fn functions() {
-        let ctx: HashMap<String, String> = HashMap::new();
-        let mut p = ExprParser::new(ctx);
+        let mut p = ExprParser::new();
         p.add_function("add", |args| {
             let mut sum = 0;
             for arg in args {
@@ -698,8 +703,9 @@ bar`"#
             }
             sum.into()
         });
-        assert_str_eq!(p.eval("add(1, 2, 3)").unwrap().to_string(), "6");
-        assert_str_eq!(p.eval("3 | add(1, 2)").unwrap().to_string(), "6");
+        let ctx: HashMap<String, String> = HashMap::new();
+        assert_str_eq!(p.eval("add(1, 2, 3)", &ctx).unwrap().to_string(), "6");
+        assert_str_eq!(p.eval("3 | add(1, 2)", &ctx).unwrap().to_string(), "6");
     }
 
     #[test]
@@ -716,8 +722,8 @@ bar`"#
 
     fn eval(code: &str) -> String {
         let ctx: HashMap<String, String> = HashMap::new();
-        let p = ExprParser::new(ctx);
-        p.eval(code)
+        let p = ExprParser::new();
+        p.eval(code, ctx)
             .map_err(|e| format!("code: {code}\n{e}"))
             .unwrap()
             .to_string()
