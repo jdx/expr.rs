@@ -51,6 +51,54 @@ pub enum ExprValue {
     Map(IndexMap<String, ExprValue>),
 }
 
+impl ExprValue {
+    pub fn as_bool(&self) -> Option<bool> {
+        match self {
+            ExprValue::Bool(b) => Some(*b),
+            _ => None,
+        }
+    }
+
+    pub fn as_number(&self) -> Option<i32> {
+        match self {
+            ExprValue::Number(n) => Some(*n),
+            _ => None,
+        }
+    }
+
+    pub fn as_float(&self) -> Option<f64> {
+        match self {
+            ExprValue::Float(f) => Some(*f),
+            _ => None,
+        }
+    }
+
+    pub fn as_string(&self) -> Option<&str> {
+        match self {
+            ExprValue::String(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn as_array(&self) -> Option<&[ExprValue]> {
+        match self {
+            ExprValue::Array(a) => Some(a),
+            _ => None,
+        }
+    }
+
+    pub fn as_map(&self) -> Option<&IndexMap<String, ExprValue>> {
+        match self {
+            ExprValue::Map(m) => Some(m),
+            _ => None,
+        }
+    }
+
+    pub fn is_nil(&self) -> bool {
+        matches!(self, ExprValue::Nil)
+    }
+}
+
 impl AsRef<ExprValue> for ExprValue {
     fn as_ref(&self) -> &ExprValue {
         self
