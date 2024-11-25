@@ -944,6 +944,8 @@ bar`"#,r#""foo\nbar""#);
 
     #[test]
     fn array_functions() -> Result<()> {
+        // TODO:
+        // test!(r#"[{type: 'foo', v: 1}, {}]"#, r#"[{type: "foo", v: 1}, {type: "foo", v: 2}, {type: "bar", v: 3}]"#);
         test!(r#"all([1, 2, 3], {# > 0})"#, "true");
         test!(r#"all([1, 2, 3], {# > 1})"#, "false");
         test!(r#"any([1, 2, 3], {# > 2})"#, "true");
@@ -958,6 +960,9 @@ bar`"#,r#""foo\nbar""#);
         test!(r#"findIndex([1, 2, 3], {# % 2 == 0})"#, "1");
         test!(r#"findLast([1, 2, 3], {# % 2 == 1})"#, "3");
         test!(r#"findLastIndex([1, 2, 3], {# % 2 == 1})"#, "2");
+        // TODO:
+        // test!(r#"[{type: 'foo', v: 1}, {type: 'foo', v: 2}, {type: 'bar', v: 3}]"#, r#"[{type: "foo", v: 1}, {type: "foo", v: 2}, {type: "bar", v: 3}]"#);
+        // test!(r#"groupBy([{type: 'foo', v: 1}, {type: 'foo', v: 2}, {type: 'bar', v: 3}], .type).foo"#, "[{type: 'foo', v: 1}, {type: 'foo', v: 2}]");
         Ok(())
     }
 

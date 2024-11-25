@@ -84,6 +84,7 @@ Term: Box<Expr> = {
 Func: Box<Func> = {
     <f:ID> "(" <a:Comma<Expr>> ")" => Box::new(Func(f, a, None)),
     <f:ID> "(" <a:Comma<Expr>> ", {" <p:Program> "}" ")" => Box::new(Func(f, a, Some(p))),
+    <f:ID> "(" <a:Comma<Expr>> ", ." <i:ID> ")" => Box::new(Func(f, a, Some(ExprProgram { lines: Vec::new(), expr: Box::new(Expr::ID(i)) }))),
 };
 
 HashEntry: (String, Box<Expr>) = {
@@ -116,6 +117,7 @@ Bool: bool = {
 
 String: String = {
     <s:r#""[^"]*""#> => s[1..s.len()-1].to_string(),
+    <s:r#"'[^']*'"#> => s[1..s.len()-1].to_string(),
     <s:r#"`[^`]*`"#> => s[1..s.len()-1].to_string(),
 };
 
