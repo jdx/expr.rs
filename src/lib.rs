@@ -3,63 +3,96 @@
 //! Example:
 //! ```
 //! use std::collections::HashMap;
-//! use expr::ExprParser;
+//! use expr::{ExprContext, ExprParser};
 //! let p = ExprParser::new();
-//! let ctx: HashMap<String, String> = HashMap::new();
-//! assert_eq!(p.eval("1 + 2", ctx).unwrap().to_string(), "3");
+//! let ctx = ExprContext::default();
+//! assert_eq!(p.eval("1 + 2", &ctx).unwrap().to_string(), "3");
 //! ```
 
 use indexmap::IndexMap;
 use lalrpop_util::lalrpop_mod;
-use std::collections::HashMap;
 use std::fmt;
 use std::fmt::{Debug, Display, Formatter};
-use std::iter::once;
 use thiserror::Error;
 
 /// An error that can occur when parsing or evaluating an expr program
 #[derive(Error, Debug)]
 pub enum ExprError {
-    #[error("Parse error: {0}")]
+    #[error("{0}")]
     ParseError(String),
-    #[error("Eval error: {0}")]
-    EvalError(String),
-    #[error("Regex error: {0}")]
+    #[error("{0}")]
+    ExprError(String),
+    #[error(transparent)]
     RegexError(#[from] regex::Error),
 }
 
-
 impl From<String> for ExprError {
     fn from(s: String) -> Self {
-        ExprError::EvalError(s)
+        ExprError::ExprError(s)
     }
 }
 
 type Result<T> = std::result::Result<T, ExprError>;
+type Function<'a> = Box<dyn Fn(ExprCall) -> Result<ExprValue> + 'a + Sync + Send>;
 
 macro_rules! bail {
     ($($arg:tt)*) => {
-        return Err($crate::ExprError::EvalError(format!($($arg)*)))
+        return Err($crate::ExprError::ExprError(format!($($arg)*)))
     };
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct ExprContext(IndexMap<String, ExprValue>);
+
+impl ExprContext {
+    pub fn insert<K, V>(&mut self, key: K, value: V)
+    where
+        K: Into<String>,
+        V: Into<ExprValue>,
+    {
+        self.0.insert(key.into(), value.into());
+    }
+
+    pub fn get(&self, key: &str) -> Option<&ExprValue> {
+        self.0.get(key)
+    }
+}
+
+impl<S: Display, T: Into<ExprValue>> FromIterator<(S, T)> for ExprContext {
+    fn from_iter<I: IntoIterator<Item = (S, T)>>(iter: I) -> Self {
+        let mut ctx = Self::default();
+        for (k, v) in iter {
+            ctx.insert(k.to_string(), v);
+        }
+        ctx
+    }
 }
 
 /// A parsed expr program that can be run
 #[derive(Debug, Clone)]
 pub struct ExprProgram {
-    lines: Vec<(String, Expr)>,
-    expr: Expr,
+    lines: Vec<(String, Box<Expr>)>,
+    expr: Box<Expr>,
 }
 
 /// Represents a data value as input or output to an expr program
 #[derive(Debug, PartialEq, Clone)]
 pub enum ExprValue {
-    Number(i32),
+    Number(i64),
     Bool(bool),
     Float(f64),
     Nil,
     String(String),
     Array(Vec<ExprValue>),
     Map(IndexMap<String, ExprValue>),
+}
+
+pub struct ExprCall<'a, 'b> {
+    pub name: String,
+    pub args: Vec<ExprValue>,
+    pub predicate: Option<ExprProgram>,
+    pub ctx: &'a ExprContext,
+    pub parser: &'a ExprParser<'b>,
 }
 
 impl ExprValue {
@@ -70,7 +103,7 @@ impl ExprValue {
         }
     }
 
-    pub fn as_number(&self) -> Option<i32> {
+    pub fn as_number(&self) -> Option<i64> {
         match self {
             ExprValue::Number(n) => Some(*n),
             _ => None,
@@ -116,8 +149,8 @@ impl AsRef<ExprValue> for ExprValue {
     }
 }
 
-impl From<i32> for ExprValue {
-    fn from(n: i32) -> Self {
+impl From<i64> for ExprValue {
+    fn from(n: i64) -> Self {
         ExprValue::Number(n)
     }
 }
@@ -152,9 +185,9 @@ impl From<&str> for ExprValue {
     }
 }
 
-impl From<Vec<ExprValue>> for ExprValue {
-    fn from(a: Vec<ExprValue>) -> Self {
-        ExprValue::Array(a)
+impl<V: Into<ExprValue>> From<Vec<V>> for ExprValue {
+    fn from(a: Vec<V>) -> Self {
+        ExprValue::Array(a.into_iter().map(|v| v.into()).collect())
     }
 }
 
@@ -171,12 +204,14 @@ impl Display for ExprValue {
             ExprValue::Float(n) => write!(f, "{n}"),
             ExprValue::Bool(b) => write!(f, "{b}"),
             ExprValue::Nil => write!(f, "nil"),
-            ExprValue::String(s) => write!(f, r#""{}""#, s
-                .replace("\\", "\\\\")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r")
-                .replace("\t", "\\t")
-                .replace("\"", "\\\"")
+            ExprValue::String(s) => write!(
+                f,
+                r#""{}""#,
+                s.replace("\\", "\\\\")
+                    .replace("\n", "\\n")
+                    .replace("\r", "\\r")
+                    .replace("\t", "\\t")
+                    .replace("\"", "\\\"")
             ),
             ExprValue::Array(a) => write!(
                 f,
@@ -200,7 +235,7 @@ impl Display for ExprValue {
 
 #[derive(Debug, Clone)]
 enum Expr {
-    Number(i32),
+    Number(i64),
     Float(f64),
     String(String),
     Bool(bool),
@@ -213,21 +248,24 @@ enum Expr {
     Slice(Box<Expr>, Box<Expr>, Box<Expr>),
     Ternary(Box<Expr>, Box<Expr>, Box<Expr>),
     NilCoalesce(Box<Expr>, Box<Expr>),
-    Func(String, Vec<Box<Expr>>),
-    Pipe(Box<Expr>, Box<Expr>),
+    Func(Func),
+    Pipe(Box<Expr>, Func),
 }
+
+#[derive(Debug, Clone)]
+struct Func(String, Vec<Box<Expr>>, Option<ExprProgram>);
 
 impl Expr {
     pub fn unescape_str(s: &str) -> Self {
-        Expr::String(s
-            .replace("\\\\", "\\")
-            .replace("\\n", "\n")
-            .replace("\\r", "\r")
-            .replace("\\t", "\t")
-            .replace("\\\"", "\""))
+        Expr::String(
+            s.replace("\\\\", "\\")
+                .replace("\\n", "\n")
+                .replace("\\r", "\r")
+                .replace("\\t", "\t")
+                .replace("\\\"", "\""),
+        )
     }
 }
-
 
 #[derive(Debug, Clone)]
 enum Opcode {
@@ -252,6 +290,7 @@ enum Opcode {
     Matches,
     Index,
     OptIndex,
+    Range,
 }
 
 /// Main struct for parsing and evaluating expr programs
@@ -259,15 +298,14 @@ enum Opcode {
 /// Example:
 ///
 /// ```
-/// use std::collections::HashMap;
-/// use expr::ExprParser;
-/// let ctx = HashMap::from([("foo", 1), ("bar", 2)]);
+/// use expr::{ExprContext, ExprParser};
+/// let ctx = ExprContext::from_iter([("foo", 1), ("bar", 2)]);
 /// let p = ExprParser::new();
-/// assert_eq!(p.eval("foo + bar", ctx).unwrap().to_string(), "3");
+/// assert_eq!(p.eval("foo + bar", &ctx).unwrap().to_string(), "3");
 /// ```
 #[derive(Default)]
 pub struct ExprParser<'a> {
-    functions: HashMap<String, Box<dyn Fn(&Vec<ExprValue>) -> Result<ExprValue> + 'a + Sync + Send>>,
+    functions: IndexMap<String, Function<'a>>,
 }
 
 impl Debug for ExprParser<'_> {
@@ -279,11 +317,32 @@ impl Debug for ExprParser<'_> {
 lalrpop_mod!(grammar);
 
 impl<'a> ExprParser<'a> {
-    /// Create a new parser
+    /// Create a new parser with default set of functions
     pub fn new() -> Self {
-        Self {
-            functions: HashMap::new(),
-        }
+        let mut p = Self {
+            functions: IndexMap::new(),
+        };
+
+        p.add_function("filter", |c| {
+            let mut result = Vec::new();
+            if c.args.len() != 1 {
+                bail!("filter() takes exactly one argument and a predicate");
+            }
+            if let (ExprValue::Array(a), Some(predicate)) = (&c.args[0], c.predicate) {
+                for value in a {
+                    let mut ctx = c.ctx.clone();
+                    ctx.insert("#".to_string(), value.clone());
+                    if let ExprValue::Bool(true) = c.parser.run(predicate.clone(), &ctx)? {
+                        result.push(value.clone());
+                    }
+                }
+            } else {
+                bail!("filter() takes an array as the first argument");
+            }
+            Ok(result.into())
+        });
+
+        p
     }
 
     /// Add a function for expr programs to call
@@ -291,12 +350,13 @@ impl<'a> ExprParser<'a> {
     /// Example:
     /// ```
     /// use std::collections::HashMap;
-    /// use expr::{ExprParser, ExprValue};
+    /// use expr::{ExprContext, ExprParser, ExprValue};
     ///
     /// let mut p = ExprParser::new();
-    /// p.add_function("add", |args| {
+    /// let ctx = ExprContext::default();
+    /// p.add_function("add", |c| {
     ///   let mut sum = 0;
-    ///     for arg in args {
+    ///     for arg in c.args {
     ///       if let ExprValue::Number(n) = arg {
     ///         sum += n;
     ///        } else {
@@ -305,12 +365,11 @@ impl<'a> ExprParser<'a> {
     ///     }
     ///   Ok(sum.into())
     /// });
-    /// let ctx: HashMap<String, String> = HashMap::new();
-    /// assert_eq!(p.eval("add(1, 2, 3)", ctx).unwrap().to_string(), "6");
+    /// assert_eq!(p.eval("add(1, 2, 3)", &ctx).unwrap().to_string(), "6");
     /// ```
     pub fn add_function<F>(&mut self, name: &str, f: F)
     where
-        F: Fn(&Vec<ExprValue>) -> Result<ExprValue> + 'a + Sync + Send,
+        F: Fn(ExprCall) -> Result<ExprValue> + 'a + Sync + Send,
     {
         self.functions.insert(name.to_string(), Box::new(f));
     }
@@ -323,17 +382,13 @@ impl<'a> ExprParser<'a> {
     }
 
     /// Run a compiled expr program
-    pub fn run<K, V>(&self, program: ExprProgram, ctx: impl IntoIterator<Item=(K, V)>) -> Result<ExprValue>
-    where
-        K: AsRef<str>,
-        V: Into<ExprValue>,
-    {
-        let mut ctx: IndexMap<String, ExprValue> = ctx.into_iter().map(|(k, v)| (k.as_ref().to_string(), v.into())).collect();
-        ctx.insert("$env".to_string(), ExprValue::Map(ctx.clone()));
+    pub fn run(&self, program: ExprProgram, ctx: &ExprContext) -> Result<ExprValue> {
+        let mut ctx = ctx.clone();
+        ctx.insert("$env".to_string(), ExprValue::Map(ctx.0.clone()));
         for (id, expr) in program.lines {
-            ctx.insert(id, self.parse(expr, &ctx)?);
+            ctx.insert(id, self.parse(*expr, &ctx)?);
         }
-        self.parse(program.expr, &ctx)
+        self.parse(*program.expr, &ctx)
     }
 
     /// Compile and run an expr program in one step
@@ -341,21 +396,17 @@ impl<'a> ExprParser<'a> {
     /// Example:
     /// ```
     /// use std::collections::HashMap;
-    /// use expr::ExprParser;
+    /// use expr::{ExprContext, ExprParser};
     /// let p = ExprParser::default();
-    /// let ctx: HashMap<String, String> = HashMap::new();
-    /// assert_eq!(p.eval("1 + 2", ctx).unwrap().to_string(), "3");
+    /// let ctx = ExprContext::default();
+    /// assert_eq!(p.eval("1 + 2", &ctx).unwrap().to_string(), "3");
     /// ```
-    pub fn eval<K, V>(&self, code: &str, ctx: impl IntoIterator<Item=(K, V)>) -> Result<ExprValue>
-    where
-        K: AsRef<str>,
-        V: Into<ExprValue>,
-    {
+    pub fn eval(&self, code: &str, ctx: &ExprContext) -> Result<ExprValue> {
         let program = self.compile(code)?;
         self.run(program, ctx)
     }
 
-    fn parse(&self, expr: Expr, ctx: &IndexMap<String, ExprValue>) -> Result<ExprValue> {
+    fn parse(&self, expr: Expr, ctx: &ExprContext) -> Result<ExprValue> {
         let parse = |expr| self.parse(expr, ctx);
         let value: ExprValue = match expr {
             Expr::Number(n) => n.into(),
@@ -380,17 +431,7 @@ impl<'a> ExprParser<'a> {
                 .map(|(k, v)| Ok((k, parse(*v)?)))
                 .collect::<Result<IndexMap<String, ExprValue>>>()?
                 .into(),
-            Expr::Func(name, args) => {
-                let args = args
-                    .into_iter()
-                    .map(|e| parse(*e))
-                    .collect::<Result<Vec<_>>>()?;
-                if let Some(f) = self.functions.get(&name) {
-                    f(&args)?
-                } else {
-                    bail!("Unknown function: {name}")
-                }
-            }
+            Expr::Func(func) => self.exec_func(ctx, func)?,
             Expr::Not(expr) => match parse(*expr)? {
                 ExprValue::Bool(b) => (!b).into(),
                 ExprValue::Nil => true.into(),
@@ -400,7 +441,7 @@ impl<'a> ExprParser<'a> {
                 ExprValue::Bool(true) => parse(*then)?,
                 ExprValue::Bool(false) => parse(*el)?,
                 value => bail!("Invalid condition for ?: {value:?}"),
-            }
+            },
             Expr::NilCoalesce(lhs, rhs) => match parse(*lhs)? {
                 ExprValue::Nil => parse(*rhs)?,
                 value => value,
@@ -414,10 +455,10 @@ impl<'a> ExprParser<'a> {
                     };
                     let rhs = match parse(*rhs)? {
                         ExprValue::Number(n) => n,
-                        ExprValue::Nil => a.len() as i32,
+                        ExprValue::Nil => a.len() as i64,
                         rhs => bail!("Invalid right-hand side of [{lhs:?}:{rhs:?}]"),
                     };
-                    let len = a.len() as i32;
+                    let len = a.len() as i64;
                     let lhs = if lhs < 0 {
                         if lhs >= -len {
                             (len + lhs) as usize
@@ -440,23 +481,10 @@ impl<'a> ExprParser<'a> {
                 }
                 arr => bail!("Invalid operands for [: {arr:?}, {lhs:?}, {rhs:?}"),
             },
-            Expr::Pipe(lhs, rhs) => match (parse(*lhs)?, *rhs) {
-                (lhs, Expr::Func(name, args)) => {
-                    if let Some(f) = self.functions.get(&name) {
-                        let args = args
-                            .into_iter()
-                            .map(|e| parse(*e))
-                            .collect::<Result<Vec<ExprValue>>>()?
-                            .into_iter()
-                            .chain(once(lhs))
-                            .collect();
-                        f(&args)?
-                    } else {
-                        bail!("Unknown function: {name}")
-                    }
-                }
-                _ => bail!("Invalid right-hand side of |"),
-            },
+            Expr::Pipe(lhs, mut func) => {
+                func.1.push(lhs);
+                self.exec_func(ctx, func)?
+            }
             Expr::Op(lhs, op, rhs) => {
                 let lhs = parse(*lhs)?;
                 let rhs = parse(*rhs)?;
@@ -487,7 +515,9 @@ impl<'a> ExprParser<'a> {
                         (lhs, rhs) => bail!("Invalid operands for %: {lhs:?} and {rhs:?}"),
                     },
                     Opcode::Pow => match (lhs, rhs) {
-                        (ExprValue::Number(lhs), ExprValue::Number(rhs)) => lhs.pow(rhs as u32).into(),
+                        (ExprValue::Number(lhs), ExprValue::Number(rhs)) => {
+                            lhs.pow(rhs as u32).into()
+                        }
                         (ExprValue::Float(lhs), ExprValue::Float(rhs)) => lhs.powf(rhs).into(),
                         (lhs, rhs) => bail!("Invalid operands for ^: {lhs:?} and {rhs:?}"),
                     },
@@ -504,6 +534,8 @@ impl<'a> ExprParser<'a> {
                         (ExprValue::Float(lhs), ExprValue::Float(rhs)) => (lhs == rhs).into(),
                         (ExprValue::String(lhs), ExprValue::String(rhs)) => (lhs == rhs).into(),
                         (ExprValue::Bool(lhs), ExprValue::Bool(rhs)) => (lhs == rhs).into(),
+                        (ExprValue::Array(lhs), ExprValue::Array(rhs)) => (lhs == rhs).into(),
+                        (ExprValue::Map(lhs), ExprValue::Map(rhs)) => (lhs == rhs).into(),
                         (lhs, rhs) => bail!("Invalid operands for ==: {lhs:?} and {rhs:?}"),
                     },
                     Opcode::Ne => match (lhs, rhs) {
@@ -538,38 +570,55 @@ impl<'a> ExprParser<'a> {
                         (lhs, rhs) => bail!("Invalid operands for >=: {lhs:?} and {rhs:?}"),
                     },
                     Opcode::Contains => match (lhs, rhs) {
-                        (ExprValue::String(lhs), ExprValue::String(rhs)) => lhs.contains(&rhs).into(),
+                        (ExprValue::String(lhs), ExprValue::String(rhs)) => {
+                            lhs.contains(&rhs).into()
+                        }
                         (lhs, rhs) => bail!("Invalid operands for contains: {lhs:?} and {rhs:?}"),
                     },
                     Opcode::StartsWith => match (lhs, rhs) {
-                        (ExprValue::String(lhs), ExprValue::String(rhs)) => lhs.starts_with(&rhs).into(),
+                        (ExprValue::String(lhs), ExprValue::String(rhs)) => {
+                            lhs.starts_with(&rhs).into()
+                        }
                         (lhs, rhs) => {
                             bail!("Invalid operands for starts_with: {lhs:?} and {rhs:?}")
                         }
                     },
                     Opcode::EndsWith => match (lhs, rhs) {
-                        (ExprValue::String(lhs), ExprValue::String(rhs)) => lhs.ends_with(&rhs).into(),
+                        (ExprValue::String(lhs), ExprValue::String(rhs)) => {
+                            lhs.ends_with(&rhs).into()
+                        }
                         (lhs, rhs) => bail!("Invalid operands for ends_with: {lhs:?} and {rhs:?}"),
                     },
                     Opcode::Matches => match (lhs, rhs) {
-                        (ExprValue::String(lhs), ExprValue::String(rhs)) => regex::Regex::new(&rhs)?.is_match(&lhs).into(),
+                        (ExprValue::String(lhs), ExprValue::String(rhs)) => {
+                            regex::Regex::new(&rhs)?.is_match(&lhs).into()
+                        }
                         (lhs, rhs) => bail!("Invalid operands for matches: {lhs:?} and {rhs:?}"),
+                    },
+                    Opcode::Range => match (lhs, rhs) {
+                        (ExprValue::Number(lhs), ExprValue::Number(rhs)) => (lhs..=rhs)
+                            .map(ExprValue::Number)
+                            .collect::<Vec<_>>()
+                            .into(),
+                        (lhs, rhs) => bail!("Invalid operands for ..: {lhs:?} and {rhs:?}"),
                     },
                     Opcode::In => match (lhs, rhs) {
                         (lhs, ExprValue::Array(rhs)) => rhs.contains(&lhs).into(),
-                        (ExprValue::String(lhs), ExprValue::Map(rhs)) => rhs.contains_key(&lhs).into(),
+                        (ExprValue::String(lhs), ExprValue::Map(rhs)) => {
+                            rhs.contains_key(&lhs).into()
+                        }
                         (lhs, rhs) => bail!("Invalid operands for in: {lhs:?} and {rhs:?}"),
                     },
                     Opcode::Index => match (lhs, rhs) {
                         (ExprValue::Array(mut a), ExprValue::Number(n)) => {
                             if n < 0 {
-                                if n >= -(a.len() as i32) {
-                                    a.remove((a.len() as i32 + n) as usize)
+                                if n >= -(a.len() as i64) {
+                                    a.remove((a.len() as i64 + n) as usize)
                                 } else {
                                     ExprValue::Nil
                                 }
                             } else {
-                                if n < a.len() as i32 {
+                                if n < a.len() as i64 {
                                     a.remove(n as usize)
                                 } else {
                                     ExprValue::Nil
@@ -593,134 +642,181 @@ impl<'a> ExprParser<'a> {
         };
         Ok(value)
     }
+
+    fn exec_func(&self, ctx: &ExprContext, func: Func) -> Result<ExprValue> {
+        let Func(name, args, predicate) = func;
+        let args = args
+            .into_iter()
+            .map(|e| self.parse(*e, ctx))
+            .collect::<Result<Vec<_>>>()?;
+        let call = ExprCall {
+            name,
+            args,
+            predicate,
+            ctx,
+            parser: self,
+        };
+        if let Some(f) = self.functions.get(&call.name) {
+            f(call)
+        } else {
+            bail!("Unknown function: {}", call.name)
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use pretty_assertions::assert_str_eq;
-    use std::collections::HashMap;
 
-    #[test]
-    fn arithmetic() {
-        assert_str_eq!(eval("2 + 3"), "5");
-        assert_str_eq!(eval("2.1 + 3.2"), "5.300000000000001");
-        assert_str_eq!(eval("2 - 3"), "-1");
-        assert_str_eq!(eval("2.1 - 3.2"), "-1.1");
-        assert_str_eq!(eval("2 * 3"), "6");
-        assert_str_eq!(eval("2.1 * 3.2"), "6.720000000000001");
-        assert_str_eq!(eval("7 / 3"), "2");
-        assert_str_eq!(eval("7.0 / 3.0"), "2.3333333333333335");
-        assert_str_eq!(eval("7 % 3"), "1");
-        assert_str_eq!(eval("2 ** 3"), "8");
-        assert_str_eq!(eval("2.0 ** 3.0"), "8");
-        assert_str_eq!(eval("2 ^ 3"), "8");
-        assert_str_eq!(eval("2.0 ^ 3.0"), "8");
-        assert_str_eq!(eval("1 == 1"), "true");
-        assert_str_eq!(eval("1 == 2"), "false");
-        assert_str_eq!(eval("1 != 2"), "true");
-        assert_str_eq!(eval("1 != 1"), "false");
+    macro_rules! eval {
+        ($code:expr) => {{
+            let ctx = ExprContext::default();
+            let p = ExprParser::new();
+            let code = $code;
+            p.eval(code, &ctx)
+                .map_err(|e| ExprError::from(format!("{code}: {e}")))
+                .map(|v| v.to_string())
+        }};
     }
 
     #[test]
-    fn string() {
-        assert_str_eq!(eval(r#""foo" + "bar""#), r#""foobar""#);
-        assert_str_eq!(eval(r#""foo" contains "o""#), "true");
-        assert_str_eq!(eval(r#""foo" contains "x""#), "false");
-        assert_str_eq!(eval(r#""foo" startsWith "f""#), "true");
-        assert_str_eq!(eval(r#""foo" startsWith "x""#), "false");
-        assert_str_eq!(eval(r#""foo" endsWith "o""#), "true");
-        assert_str_eq!(eval(r#""foo" endsWith "x""#), "false");
-        assert_str_eq!(eval(r#""foo" == "foo""#), "true");
-        assert_str_eq!(eval(r#""foo" == "bar""#), "false");
-        assert_str_eq!(eval(r#""foo" != "bar""#), "true");
-        assert_str_eq!(eval(r#""foo" != "foo""#), "false");
-        assert_str_eq!(eval(r#""bar" < "foo""#), "true");
-        assert_str_eq!(eval(r#""foo" < "foo""#), "false");
-        assert_str_eq!(eval(r#""foo" > "bar""#), "true");
-        assert_str_eq!(eval(r#""foo" > "foo""#), "false");
-        assert_str_eq!(eval(r#""bar" <= "foo""#), "true");
-        assert_str_eq!(eval(r#""foo" <= "foo""#), "true");
-        assert_str_eq!(eval(r#""bar" >= "foo""#), "false");
-        assert_str_eq!(eval(r#""foo" >= "foo""#), "true");
-        assert_str_eq!(eval(r#""foo" matches "^f""#), "true");
-        assert_str_eq!(eval(r#""foo" matches "^x""#), "false");
+    fn arithmetic() -> Result<()> {
+        assert_str_eq!(eval("2 + 3")?, "5");
+        assert_str_eq!(eval("2.1 + 3.2")?, "5.300000000000001");
+        assert_str_eq!(eval("2 - 3")?, "-1");
+        assert_str_eq!(eval("2.1 - 3.2")?, "-1.1");
+        assert_str_eq!(eval("2 * 3")?, "6");
+        assert_str_eq!(eval("2.1 * 3.2")?, "6.720000000000001");
+        assert_str_eq!(eval("7 / 3")?, "2");
+        assert_str_eq!(eval("7.0 / 3.0")?, "2.3333333333333335");
+        assert_str_eq!(eval("7 % 3")?, "1");
+        assert_str_eq!(eval("2 ** 3")?, "8");
+        assert_str_eq!(eval("2.0 ** 3.0")?, "8");
+        assert_str_eq!(eval("2 ^ 3")?, "8");
+        assert_str_eq!(eval("2.0 ^ 3.0")?, "8");
+        assert_str_eq!(eval("1 == 1")?, "true");
+        assert_str_eq!(eval("1 == 2")?, "false");
+        assert_str_eq!(eval("1 != 2")?, "true");
+        assert_str_eq!(eval("1 != 1")?, "false");
+        Ok(())
+    }
+
+    #[test]
+    fn string() -> Result<()> {
+        assert_str_eq!(eval(r#""foo" + "bar""#)?, r#""foobar""#);
+        assert_str_eq!(eval(r#""foo" contains "o""#)?, "true");
+        assert_str_eq!(eval(r#""foo" contains "x""#)?, "false");
+        assert_str_eq!(eval(r#""foo" startsWith "f""#)?, "true");
+        assert_str_eq!(eval(r#""foo" startsWith "x""#)?, "false");
+        assert_str_eq!(eval(r#""foo" endsWith "o""#)?, "true");
+        assert_str_eq!(eval(r#""foo" endsWith "x""#)?, "false");
+        assert_str_eq!(eval(r#""foo" == "foo""#)?, "true");
+        assert_str_eq!(eval(r#""foo" == "bar""#)?, "false");
+        assert_str_eq!(eval(r#""foo" != "bar""#)?, "true");
+        assert_str_eq!(eval(r#""foo" != "foo""#)?, "false");
+        assert_str_eq!(eval(r#""bar" < "foo""#)?, "true");
+        assert_str_eq!(eval(r#""foo" < "foo""#)?, "false");
+        assert_str_eq!(eval(r#""foo" > "bar""#)?, "true");
+        assert_str_eq!(eval(r#""foo" > "foo""#)?, "false");
+        assert_str_eq!(eval(r#""bar" <= "foo""#)?, "true");
+        assert_str_eq!(eval(r#""foo" <= "foo""#)?, "true");
+        assert_str_eq!(eval(r#""bar" >= "foo""#)?, "false");
+        assert_str_eq!(eval(r#""foo" >= "foo""#)?, "true");
+        assert_str_eq!(eval(r#""foo" matches "^f""#)?, "true");
+        assert_str_eq!(eval(r#""foo" matches "^x""#)?, "false");
         assert_str_eq!(
             eval(
                 r#"`foo
 bar`"#
-            ),
+            )?,
             r#""foo\nbar""#
         );
+        Ok(())
     }
 
     #[test]
-    fn nil() {
-        assert_str_eq!(eval("nil"), "nil");
-        assert_str_eq!(eval("!nil"), "true");
-        assert_str_eq!(eval("!!nil"), "false");
+    fn nil() -> Result<()> {
+        assert_str_eq!(eval("nil")?, "nil");
+        assert_str_eq!(eval("!nil")?, "true");
+        assert_str_eq!(eval("!!nil")?, "false");
+        Ok(())
     }
 
     #[test]
-    fn logic() {
-        assert_str_eq!(eval(r#"true && false"#), "false");
-        assert_str_eq!(eval(r#"true || false"#), "true");
-        assert_str_eq!(eval(r#"true == true"#), "true");
-        assert_str_eq!(eval(r#"true == false"#), "false");
-        assert_str_eq!(eval(r#"true != false"#), "true");
-        assert_str_eq!(eval(r#"true != true"#), "false");
-        assert_str_eq!(eval(r#"!true"#), "false");
-        assert_str_eq!(eval(r#"not true"#), "false");
+    fn logic() -> Result<()> {
+        assert_str_eq!(eval(r#"true && false"#)?, "false");
+        assert_str_eq!(eval(r#"true || false"#)?, "true");
+        assert_str_eq!(eval(r#"true == true"#)?, "true");
+        assert_str_eq!(eval(r#"true == false"#)?, "false");
+        assert_str_eq!(eval(r#"true != false"#)?, "true");
+        assert_str_eq!(eval(r#"true != true"#)?, "false");
+        assert_str_eq!(eval(r#"!true"#)?, "false");
+        assert_str_eq!(eval(r#"not true"#)?, "false");
+        Ok(())
     }
 
     #[test]
-    fn array() {
-        assert_str_eq!(eval(r#"["foo","bar"]"#), r#"["foo", "bar"]"#);
-        assert_str_eq!(eval(r#""foo" in ["foo", "bar"]"#), "true");
-        assert_str_eq!(eval(r#""foo" in ["bar", "baz"]"#), "false");
-        assert_str_eq!(eval(r#"["foo", "bar"][0]"#), r#""foo""#);
-        assert_str_eq!(eval(r#"["foo", "bar"][1]"#), r#""bar""#);
-        assert_str_eq!(eval(r#"["foo", "bar"][2]"#), "nil");
-        assert_str_eq!(eval(r#"["foo", "bar"][-1]"#), r#""bar""#);
-        assert_str_eq!(eval(r#"["foo", "bar"][0:1]"#), r#"["foo"]"#);
-        assert_str_eq!(eval(r#"["foo", "bar"][0:2]"#), r#"["foo", "bar"]"#);
-        assert_str_eq!(eval(r#"["foo", "bar"][0:-1]"#), r#"["foo"]"#);
-        assert_str_eq!(eval(r#"["foo", "bar"][1:]"#), r#"["bar"]"#);
-        assert_str_eq!(eval(r#"["foo", "bar"][:1]"#), r#"["foo"]"#);
-        assert_str_eq!(eval(r#"["foo", "bar"][:]"#), r#"["foo", "bar"]"#);
+    fn array() -> Result<()> {
+        assert_str_eq!(eval(r#"["foo","bar"]"#)?, r#"["foo", "bar"]"#);
+        assert_str_eq!(eval(r#""foo" in ["foo", "bar"]"#)?, "true");
+        assert_str_eq!(eval(r#""foo" in ["bar", "baz"]"#)?, "false");
+        assert_str_eq!(eval(r#"["foo", "bar"][0]"#)?, r#""foo""#);
+        assert_str_eq!(eval(r#"["foo", "bar"][1]"#)?, r#""bar""#);
+        assert_str_eq!(eval(r#"["foo", "bar"][2]"#)?, "nil");
+        assert_str_eq!(eval(r#"["foo", "bar"][-1]"#)?, r#""bar""#);
+        assert_str_eq!(eval(r#"["foo", "bar"][0:1]"#)?, r#"["foo"]"#);
+        assert_str_eq!(eval(r#"["foo", "bar"][0:2]"#)?, r#"["foo", "bar"]"#);
+        assert_str_eq!(eval(r#"["foo", "bar"][0:-1]"#)?, r#"["foo"]"#);
+        assert_str_eq!(eval(r#"["foo", "bar"][1:]"#)?, r#"["bar"]"#);
+        assert_str_eq!(eval(r#"["foo", "bar"][:1]"#)?, r#"["foo"]"#);
+        assert_str_eq!(eval(r#"["foo", "bar"][:]"#)?, r#"["foo", "bar"]"#);
+        Ok(())
     }
 
     #[test]
-    fn map() {
-        assert_str_eq!(eval(r#"{foo: "bar"}"#), r#"{foo: "bar"}"#);
-        assert_str_eq!(eval(r#"{foo: "bar"}.foo"#), r#""bar""#);
-        assert_str_eq!(eval(r#"{foo: "bar"}.baz"#), "nil");
-        assert_str_eq!(eval(r#"{foo: "bar"}["foo"]"#), r#""bar""#);
-        assert_str_eq!(eval(r#"{foo: "bar"}["baz"]"#), "nil");
-        assert_str_eq!(eval(r#"{foo: "bar"}?.foo"#), r#""bar""#);
-        assert_str_eq!(eval(r#"{foo: "bar"}?.bar?.foo"#), r#"nil"#);
-        assert_str_eq!(eval(r#""foo" in {foo: "bar"}"#), "true");
-        assert_str_eq!(eval(r#""bar" in {foo: "bar"}"#), "false");
+    fn map() -> Result<()> {
+        assert_str_eq!(eval(r#"{foo: "bar"}"#)?, r#"{foo: "bar"}"#);
+        assert_str_eq!(eval(r#"{foo: "bar"}.foo"#)?, r#""bar""#);
+        assert_str_eq!(eval(r#"{foo: "bar"}.baz"#)?, "nil");
+        assert_str_eq!(eval(r#"{foo: "bar"}["foo"]"#)?, r#""bar""#);
+        assert_str_eq!(eval(r#"{foo: "bar"}["baz"]"#)?, "nil");
+        assert_str_eq!(eval(r#"{foo: "bar"}?.foo"#)?, r#""bar""#);
+        assert_str_eq!(eval(r#"{foo: "bar"}?.bar?.foo"#)?, r#"nil"#);
+        assert_str_eq!(eval(r#""foo" in {foo: "bar"}"#)?, "true");
+        assert_str_eq!(eval(r#""bar" in {foo: "bar"}"#)?, "false");
+        Ok(())
     }
 
     #[test]
-    fn context() {
-        let ctx = [("Version", "v1.0.0")];
+    fn context() -> Result<()> {
+        let ctx = ExprContext::from_iter([("Version".to_string(), "v1.0.0".to_string())]);
         let p = ExprParser::new();
-        assert_str_eq!(p.eval(r#"Version matches "^v\\d+\\.\\d+\\.\\d+""#, ctx).unwrap().to_string(), "true");
-        assert_str_eq!(p.eval(r#""Version" in $env"#, ctx).unwrap().to_string(), r#"true"#);
-        assert_str_eq!(p.eval(r#""version" in $env"#, ctx).unwrap().to_string(), r#"false"#);
-        assert_str_eq!(p.eval(r#"$env["Version"]"#, ctx).unwrap().to_string(), r#""v1.0.0""#);
+        assert_str_eq!(
+            p.eval(r#"Version matches "^v\\d+\\.\\d+\\.\\d+""#, &ctx)?
+                .to_string(),
+            "true"
+        );
+        assert_str_eq!(p.eval(r#""Version" in $env"#, &ctx)?.to_string(), r#"true"#);
+        assert_str_eq!(
+            p.eval(r#""version" in $env"#, &ctx)?.to_string(),
+            r#"false"#
+        );
+        assert_str_eq!(
+            p.eval(r#"$env["Version"]"#, &ctx)?.to_string(),
+            r#""v1.0.0""#
+        );
+        Ok(())
     }
 
     #[test]
-    fn functions() {
+    fn functions() -> Result<()> {
         let x = "s";
         let mut p = ExprParser::new();
-        p.add_function("add", |args: &Vec<ExprValue>| -> Result<ExprValue> {
+        p.add_function("add", |c| -> Result<ExprValue> {
             eprintln!("{}", x);
             let mut sum = 0;
-            for arg in args {
+            for arg in c.args {
                 if let ExprValue::Number(n) = arg {
                     sum += n;
                 } else {
@@ -729,36 +825,51 @@ bar`"#
             }
             Ok(sum.into())
         });
-        let ctx: HashMap<String, String> = HashMap::new();
-        assert_str_eq!(p.eval("add(1, 2, 3)", &ctx).unwrap().to_string(), "6");
-        assert_str_eq!(p.eval("3 | add(1, 2)", &ctx).unwrap().to_string(), "6");
+        let ctx = ExprContext::default();
+        assert_str_eq!(p.eval("add(1, 2, 3)", &ctx)?.to_string(), "6");
+        assert_str_eq!(p.eval("3 | add(1, 2)", &ctx)?.to_string(), "6");
+        Ok(())
     }
 
     #[test]
-    fn variables() {
+    fn variables() -> Result<()> {
         let p = ExprParser::new();
-        let ctx: HashMap<String, String> = HashMap::new();
-        assert_str_eq!(p.eval("let x = 1; x", ctx).unwrap().to_string(), "1");
+        let ctx = ExprContext::default();
+        assert_str_eq!(p.eval("let x = 1; x", &ctx)?.to_string(), "1");
+        Ok(())
     }
 
     #[test]
-    fn ternary() {
-        assert_str_eq!(eval("true ? 1 : 2"), "1");
-        assert_str_eq!(eval("false ? 1 : 2"), "2");
+    fn ternary() -> Result<()> {
+        assert_str_eq!(eval("true ? 1 : 2")?, "1");
+        assert_str_eq!(eval("false ? 1 : 2")?, "2");
+        Ok(())
     }
 
     #[test]
-    fn nil_coalesce() {
-        assert_str_eq!(eval("nil ?? 1"), "1");
-        assert_str_eq!(eval("2 ?? 1"), "2");
+    fn nil_coalesce() -> Result<()> {
+        assert_str_eq!(eval("nil ?? 1")?, "1");
+        assert_str_eq!(eval("2 ?? 1")?, "2");
+        Ok(())
     }
 
-    fn eval(code: &str) -> String {
-        let ctx: HashMap<String, String> = HashMap::new();
+    #[test]
+    fn range() -> Result<()> {
+        assert_str_eq!(eval("1..3 == [1, 2, 3]")?, "true");
+        Ok(())
+    }
+
+    #[test]
+    fn filter() -> Result<()> {
+        assert_str_eq!(eval!("filter(0..9, {# % 2 == 0})")?, "[0, 2, 4, 6, 8]");
+        Ok(())
+    }
+
+    fn eval(code: &str) -> Result<String> {
+        let ctx = ExprContext::default();
         let p = ExprParser::new();
-        p.eval(code, ctx)
-            .map_err(|e| format!("code: {code}\n{e}"))
-            .unwrap()
-            .to_string()
+        p.eval(code, &ctx)
+            .map_err(|e| format!("{code}: {e}").into())
+            .map(|v| v.to_string())
     }
 }

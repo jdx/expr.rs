@@ -1,5 +1,5 @@
 use std::str::FromStr;
-use crate::{Expr, ExprProgram, Opcode};
+use crate::{Expr, ExprProgram, Opcode, Func};
 
 grammar;
 
@@ -7,9 +7,9 @@ pub Program: ExprProgram = {
     <v:("let" <ID> "=" <Expr> ";")*> <expr:Expr> => {
         let mut lines = Vec::new();
         for var in v {
-            lines.push((var.0, *var.1));
+            lines.push((var.0, var.1));
         }
-        ExprProgram { lines, expr: *expr }
+        ExprProgram { lines, expr }
     }
 };
 
@@ -20,7 +20,7 @@ Expr: Box<Expr> = {
     <e:Expr> "." <f:ID> => Box::new(Expr::Op(e, Opcode::Index, Box::new(Expr::String(f)))),
     <e:Expr> "?." <f:ID> => Box::new(Expr::Op(e, Opcode::OptIndex, Box::new(Expr::String(f)))),
     <e:Expr> "[" <i:Expr> "]" => Box::new(Expr::Op(e, Opcode::Index, i)),
-    <e:Expr> "|" <f:ID> "(" <a:Comma<Expr>> ")" => Box::new(Expr::Pipe(e, Box::new(Expr::Func(f, a)))),
+    <e:Expr> "|" <f:Func> => Box::new(Expr::Pipe(e, *f)),
     <t:Expr> "[" <a:Expr> ":" <b:Expr> "]" => Box::new(Expr::Slice(t, a, b)),
     <t:Expr> "[" <a:Expr> ":" "]" => Box::new(Expr::Slice(t, a, Box::new(Expr::Nil))),
     <t:Expr> "[" ":" <b:Expr> "]" => Box::new(Expr::Slice(t, Box::new(Expr::Nil), b)),
@@ -59,10 +59,10 @@ FactorOp: Opcode = {
     "%" => Opcode::Mod,
     "^" => Opcode::Pow,
     "**" => Opcode::Pow,
+    ".." => Opcode::Range,
 };
 
 Unary: Box<Expr> = {
-    <f:ID>"(" <a:Comma<Term>> ")" => Box::new(Expr::Func(f, a)),
     "!" <t:Unary> => Box::new(Expr::Not(t)),
     "not" <t:Unary> => Box::new(Expr::Not(t)),
     Term,
@@ -75,9 +75,15 @@ Term: Box<Expr> = {
     <t:Bool> => Box::new(Expr::Bool(t)),
     <n:Nil> => Box::new(Expr::Nil),
     <i:ID> => Box::new(Expr::ID(i)),
+    <f:Func> => Box::new(Expr::Func(*f)),
     "[" <a:Comma<Expr>> "]" => Box::new(Expr::Array(a)),
     "{" <m:Comma<HashEntry>> "}" => Box::new(Expr::Map(m.into_iter().collect())),
     "(" <Expr> ")",
+};
+
+Func: Box<Func> = {
+    <f:ID> "(" <a:Comma<Expr>> ")" => Box::new(Func(f, a, None)),
+    <f:ID> "(" <a:Comma<Expr>> ", {" <p:Program> "}" ")" => Box::new(Func(f, a, Some(p))),
 };
 
 HashEntry: (String, Box<Expr>) = {
@@ -95,8 +101,8 @@ Comma<T>: Vec<T> = { // (0)
     }
 };
 
-Num: i32 = {
-    <s:r"-?[0-9]+"> => i32::from_str(s).unwrap()
+Num: i64 = {
+    <s:r"-?[0-9]+"> => i64::from_str(s).unwrap()
 };
 
 Float: f64 = {
@@ -118,5 +124,6 @@ Nil: () = {
 };
 
 ID: String = {
-    <s:r"[$a-zA-Z_][a-zA-Z0-9_]*"> => s.to_string()
+    <s:r"[$a-zA-Z_][a-zA-Z0-9_]*"> => s.to_string(),
+    <s:"#"> => s.to_string(),
 };
