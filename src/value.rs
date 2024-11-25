@@ -74,6 +74,18 @@ impl From<i64> for ExprValue {
     }
 }
 
+impl From<i32> for ExprValue {
+    fn from(n: i32) -> Self {
+        ExprValue::Number(n as i64)
+    }
+}
+
+impl From<usize> for ExprValue {
+    fn from(n: usize) -> Self {
+        ExprValue::Number(n as i64)
+    }
+}
+
 impl From<f64> for ExprValue {
     fn from(f: f64) -> Self {
         ExprValue::Float(f)
