@@ -1,9 +1,19 @@
 use std::str::FromStr;
-use crate::{Expr, Opcode};
+use crate::{Expr, ExprProgram, Opcode};
 
 grammar;
 
-pub Expr: Box<Expr> = {
+pub Program: ExprProgram = {
+    <v:("let" <ID> "=" <Expr> ";")*> <expr:Expr> => {
+        let mut lines = Vec::new();
+        for var in v {
+            lines.push((var.0, *var.1));
+        }
+        ExprProgram { lines, expr: *expr }
+    }
+};
+
+Expr: Box<Expr> = {
     <e:Expr> <op:ExprOp> <f:Factor> => Box::new(Expr::Op(e, op, f)),
     <u1:Unary> "?" <u2:Unary> ":" <u3:Unary> => Box::new(Expr::Ternary(u1, u2, u3)),
     <u1:Unary> "??" <u2:Unary> => Box::new(Expr::NilCoalesce(u1, u2)),

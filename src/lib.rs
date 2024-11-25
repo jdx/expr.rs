@@ -46,6 +46,7 @@ macro_rules! bail {
 /// A parsed expr program that can be run
 #[derive(Debug, Clone)]
 pub struct ExprProgram {
+    lines: Vec<(String, Expr)>,
     expr: Expr,
 }
 
@@ -316,11 +317,9 @@ impl<'a> ExprParser<'a> {
 
     /// Parse an expr program to be run later
     pub fn compile(&self, code: &str) -> Result<ExprProgram> {
-        Ok(ExprProgram {
-            expr: *grammar::ExprParser::new()
-                .parse(code)
-                .map_err(|e| ExprError::ParseError(e.to_string()))?,
-        })
+        grammar::ProgramParser::new()
+            .parse(code)
+            .map_err(|e| ExprError::ParseError(e.to_string()))
     }
 
     /// Run a compiled expr program
@@ -331,7 +330,10 @@ impl<'a> ExprParser<'a> {
     {
         let mut ctx: IndexMap<String, ExprValue> = ctx.into_iter().map(|(k, v)| (k.as_ref().to_string(), v.into())).collect();
         ctx.insert("$env".to_string(), ExprValue::Map(ctx.clone()));
-        self.parse(program.expr, ctx)
+        for (id, expr) in program.lines {
+            ctx.insert(id, self.parse(expr, &ctx)?);
+        }
+        self.parse(program.expr, &ctx)
     }
 
     /// Compile and run an expr program in one step
@@ -353,8 +355,8 @@ impl<'a> ExprParser<'a> {
         self.run(program, ctx)
     }
 
-    fn parse(&self, expr: Expr, ctx: IndexMap<String, ExprValue>) -> Result<ExprValue> {
-        let parse = |expr| self.parse(expr, ctx.clone());
+    fn parse(&self, expr: Expr, ctx: &IndexMap<String, ExprValue>) -> Result<ExprValue> {
+        let parse = |expr| self.parse(expr, ctx);
         let value: ExprValue = match expr {
             Expr::Number(n) => n.into(),
             Expr::String(s) => s.into(),
@@ -730,6 +732,13 @@ bar`"#
         let ctx: HashMap<String, String> = HashMap::new();
         assert_str_eq!(p.eval("add(1, 2, 3)", &ctx).unwrap().to_string(), "6");
         assert_str_eq!(p.eval("3 | add(1, 2)", &ctx).unwrap().to_string(), "6");
+    }
+
+    #[test]
+    fn variables() {
+        let p = ExprParser::new();
+        let ctx: HashMap<String, String> = HashMap::new();
+        assert_str_eq!(p.eval("let x = 1; x", ctx).unwrap().to_string(), "1");
     }
 
     #[test]
