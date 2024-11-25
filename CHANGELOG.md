@@ -2,11 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.6] - 2024-11-25
+
+### 🚀 Features
+
+- Add variables
+- Filter func
+- String functions
+- Array functions
+- Array functions
+
+### 🐛 Bug Fixes
+
+- Support $env
+
+### 🧪 Testing
+
+- Refactor
+
 ## [0.1.5] - 2024-11-25
 
 ### 🐛 Bug Fixes
 
 - Better support for functions
+
+### ⚙️ Miscellaneous Tasks
+
+- Release expr-lang version 0.1.5
 
 ## [0.1.4] - 2024-11-24
 
