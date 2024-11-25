@@ -2,11 +2,26 @@
 //!
 //! Example:
 //! ```
-//! use std::collections::HashMap;
 //! use expr::{ExprContext, ExprParser};
-//! let p = ExprParser::new();
-//! let ctx = ExprContext::default();
-//! assert_eq!(p.eval("1 + 2", &ctx).unwrap().to_string(), "3");
+//!
+//! let mut p = ExprParser::new();
+//!
+//! let mut ctx = ExprContext::default();
+//! ctx.insert("two".to_string(), 2);
+//!
+//! let three: i64 = p.eval("1 + two", &ctx).unwrap().as_number().unwrap();
+//! assert_eq!(three, 3);
+//!
+//! p.add_function("add", |c| {
+//!   let mut sum = 0;
+//!   for arg in c.args {
+//!     sum += arg.as_number().unwrap();
+//!   }
+//!   Ok(sum.into())
+//! });
+//!
+//! let six: i64 = p.eval("add(1, two, 3)", &ctx).unwrap().as_number().unwrap();
+//! assert_eq!(six, 6);
 //! ```
 
 use indexmap::IndexMap;
@@ -14,14 +29,14 @@ use lalrpop_util::lalrpop_mod;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 
-mod error;
 mod context;
+mod error;
 mod value;
 
-pub use error::ExprError;
-use error::Result;
 pub use crate::context::ExprContext;
 pub use crate::value::ExprValue;
+pub use error::ExprError;
+use error::Result;
 
 type Function<'a> = Box<dyn Fn(ExprCall) -> Result<ExprValue> + 'a + Sync + Send>;
 
@@ -388,7 +403,9 @@ impl<'a> ExprParser<'a> {
         });
 
         p.add_function("replace", |c| {
-            if let (ExprValue::String(s), ExprValue::String(from), ExprValue::String(to)) = (&c.args[0], &c.args[1], &c.args[2]) {
+            if let (ExprValue::String(s), ExprValue::String(from), ExprValue::String(to)) =
+                (&c.args[0], &c.args[1], &c.args[2])
+            {
                 Ok(s.replace(from, to).into())
             } else {
                 bail!("replace() takes a string as the first argument and two strings to replace");
@@ -767,7 +784,8 @@ mod tests {
             let ctx = ExprContext::default();
             let p = ExprParser::new();
             let code = $code;
-            let result = p.eval(code, &ctx)
+            let result = p
+                .eval(code, &ctx)
                 .map_err(|e| ExprError::from(format!("{code}: {e}")))
                 .map(|v| v.to_string())?;
             assert_str_eq!(result, $expected);
@@ -820,8 +838,11 @@ mod tests {
         test!(r#""foo" >= "foo""#, "true");
         test!(r#""foo" matches "^f""#, "true");
         test!(r#""foo" matches "^x""#, "false");
-        test!(r#"`foo
-bar`"#,r#""foo\nbar""#);
+        test!(
+            r#"`foo
+bar`"#,
+            r#""foo\nbar""#
+        );
         Ok(())
     }
 
@@ -930,10 +951,19 @@ bar`"#,r#""foo\nbar""#);
         test!("upper(\"foo\")", r#""FOO""#);
         test!("lower(\"FOO\")", r#""foo""#);
         test!("split(\"foo,bar\", \",\")", r#"["foo", "bar"]"#);
-        test!(r#"split("apple,orange,grape", ",", 2)"#, r#"["apple", "orange,grape"]"#);
+        test!(
+            r#"split("apple,orange,grape", ",", 2)"#,
+            r#"["apple", "orange,grape"]"#
+        );
         test!("splitAfter(\"foo,bar\", \",\")", r#"["foo,", "bar"]"#);
-        test!(r#"splitAfter("apple,orange,grape", ",", 2)"#, r#"["apple,", "orange,grape"]"#);
-        test!("replace(\"foo bar foo\", \"foo\", \"baz\")", r#""baz bar baz""#);
+        test!(
+            r#"splitAfter("apple,orange,grape", ",", 2)"#,
+            r#"["apple,", "orange,grape"]"#
+        );
+        test!(
+            "replace(\"foo bar foo\", \"foo\", \"baz\")",
+            r#""baz bar baz""#
+        );
         test!(r#"repeat("Hi", 2)"#, r#""HiHiHi""#);
         test!("indexOf(\"foo bar foo\", \"bar\")", "4");
         test!("lastIndexOf(\"foo bar foo\", \"foo\")", "8");

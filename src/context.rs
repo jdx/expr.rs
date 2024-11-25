@@ -1,6 +1,6 @@
+use crate::ExprValue;
 use indexmap::IndexMap;
 use std::fmt::Display;
-use crate::ExprValue;
 
 #[derive(Debug, Clone, Default)]
 pub struct ExprContext(pub(crate) IndexMap<String, ExprValue>);

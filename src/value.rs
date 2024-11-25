@@ -1,6 +1,6 @@
 use indexmap::IndexMap;
-use std::fmt::{Display, Formatter};
 use std::fmt;
+use std::fmt::{Display, Formatter};
 
 /// Represents a data value as input or output to an expr program
 #[derive(Debug, PartialEq, Clone)]
