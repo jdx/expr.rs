@@ -108,5 +108,5 @@ Nil: () = {
 };
 
 ID: String = {
-    <s:r"[a-zA-Z_][a-zA-Z0-9_]*"> => s.to_string()
+    <s:r"[$a-zA-Z_][a-zA-Z0-9_]*"> => s.to_string()
 };

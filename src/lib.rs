@@ -329,7 +329,8 @@ impl<'a> ExprParser<'a> {
         K: AsRef<str>,
         V: Into<ExprValue>,
     {
-        let ctx = ctx.into_iter().map(|(k, v)| (k.as_ref().to_string(), v.into())).collect();
+        let mut ctx: IndexMap<String, ExprValue> = ctx.into_iter().map(|(k, v)| (k.as_ref().to_string(), v.into())).collect();
+        ctx.insert("$env".to_string(), ExprValue::Map(ctx.clone()));
         self.parse(program.expr, ctx)
     }
 
@@ -705,6 +706,9 @@ bar`"#
         let ctx = [("Version", "v1.0.0")];
         let p = ExprParser::new();
         assert_str_eq!(p.eval(r#"Version matches "^v\\d+\\.\\d+\\.\\d+""#, ctx).unwrap().to_string(), "true");
+        assert_str_eq!(p.eval(r#""Version" in $env"#, ctx).unwrap().to_string(), r#"true"#);
+        assert_str_eq!(p.eval(r#""version" in $env"#, ctx).unwrap().to_string(), r#"false"#);
+        assert_str_eq!(p.eval(r#"$env["Version"]"#, ctx).unwrap().to_string(), r#""v1.0.0""#);
     }
 
     #[test]
