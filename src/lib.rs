@@ -12,61 +12,18 @@
 use indexmap::IndexMap;
 use lalrpop_util::lalrpop_mod;
 use std::fmt;
-use std::fmt::{Debug, Display, Formatter};
-use thiserror::Error;
+use std::fmt::{Debug, Formatter};
 
-/// An error that can occur when parsing or evaluating an expr program
-#[derive(Error, Debug)]
-pub enum ExprError {
-    #[error("{0}")]
-    ParseError(String),
-    #[error("{0}")]
-    ExprError(String),
-    #[error(transparent)]
-    RegexError(#[from] regex::Error),
-}
+mod error;
+mod context;
+mod value;
 
-impl From<String> for ExprError {
-    fn from(s: String) -> Self {
-        ExprError::ExprError(s)
-    }
-}
+pub use error::ExprError;
+use error::Result;
+pub use crate::context::ExprContext;
+pub use crate::value::ExprValue;
 
-type Result<T> = std::result::Result<T, ExprError>;
 type Function<'a> = Box<dyn Fn(ExprCall) -> Result<ExprValue> + 'a + Sync + Send>;
-
-macro_rules! bail {
-    ($($arg:tt)*) => {
-        return Err($crate::ExprError::ExprError(format!($($arg)*)))
-    };
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct ExprContext(IndexMap<String, ExprValue>);
-
-impl ExprContext {
-    pub fn insert<K, V>(&mut self, key: K, value: V)
-    where
-        K: Into<String>,
-        V: Into<ExprValue>,
-    {
-        self.0.insert(key.into(), value.into());
-    }
-
-    pub fn get(&self, key: &str) -> Option<&ExprValue> {
-        self.0.get(key)
-    }
-}
-
-impl<S: Display, T: Into<ExprValue>> FromIterator<(S, T)> for ExprContext {
-    fn from_iter<I: IntoIterator<Item = (S, T)>>(iter: I) -> Self {
-        let mut ctx = Self::default();
-        for (k, v) in iter {
-            ctx.insert(k.to_string(), v);
-        }
-        ctx
-    }
-}
 
 /// A parsed expr program that can be run
 #[derive(Debug, Clone)]
@@ -75,162 +32,12 @@ pub struct ExprProgram {
     expr: Box<Expr>,
 }
 
-/// Represents a data value as input or output to an expr program
-#[derive(Debug, PartialEq, Clone)]
-pub enum ExprValue {
-    Number(i64),
-    Bool(bool),
-    Float(f64),
-    Nil,
-    String(String),
-    Array(Vec<ExprValue>),
-    Map(IndexMap<String, ExprValue>),
-}
-
 pub struct ExprCall<'a, 'b> {
     pub name: String,
     pub args: Vec<ExprValue>,
     pub predicate: Option<ExprProgram>,
     pub ctx: &'a ExprContext,
     pub parser: &'a ExprParser<'b>,
-}
-
-impl ExprValue {
-    pub fn as_bool(&self) -> Option<bool> {
-        match self {
-            ExprValue::Bool(b) => Some(*b),
-            _ => None,
-        }
-    }
-
-    pub fn as_number(&self) -> Option<i64> {
-        match self {
-            ExprValue::Number(n) => Some(*n),
-            _ => None,
-        }
-    }
-
-    pub fn as_float(&self) -> Option<f64> {
-        match self {
-            ExprValue::Float(f) => Some(*f),
-            _ => None,
-        }
-    }
-
-    pub fn as_string(&self) -> Option<&str> {
-        match self {
-            ExprValue::String(s) => Some(s),
-            _ => None,
-        }
-    }
-
-    pub fn as_array(&self) -> Option<&[ExprValue]> {
-        match self {
-            ExprValue::Array(a) => Some(a),
-            _ => None,
-        }
-    }
-
-    pub fn as_map(&self) -> Option<&IndexMap<String, ExprValue>> {
-        match self {
-            ExprValue::Map(m) => Some(m),
-            _ => None,
-        }
-    }
-
-    pub fn is_nil(&self) -> bool {
-        matches!(self, ExprValue::Nil)
-    }
-}
-
-impl AsRef<ExprValue> for ExprValue {
-    fn as_ref(&self) -> &ExprValue {
-        self
-    }
-}
-
-impl From<i64> for ExprValue {
-    fn from(n: i64) -> Self {
-        ExprValue::Number(n)
-    }
-}
-
-impl From<f64> for ExprValue {
-    fn from(f: f64) -> Self {
-        ExprValue::Float(f)
-    }
-}
-
-impl From<bool> for ExprValue {
-    fn from(b: bool) -> Self {
-        ExprValue::Bool(b)
-    }
-}
-
-impl From<String> for ExprValue {
-    fn from(s: String) -> Self {
-        ExprValue::String(s)
-    }
-}
-
-impl From<&String> for ExprValue {
-    fn from(s: &String) -> Self {
-        ExprValue::String(s.to_string())
-    }
-}
-
-impl From<&str> for ExprValue {
-    fn from(s: &str) -> Self {
-        ExprValue::String(s.to_string())
-    }
-}
-
-impl<V: Into<ExprValue>> From<Vec<V>> for ExprValue {
-    fn from(a: Vec<V>) -> Self {
-        ExprValue::Array(a.into_iter().map(|v| v.into()).collect())
-    }
-}
-
-impl From<IndexMap<String, ExprValue>> for ExprValue {
-    fn from(m: IndexMap<String, ExprValue>) -> Self {
-        ExprValue::Map(m)
-    }
-}
-
-impl Display for ExprValue {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self {
-            ExprValue::Number(n) => write!(f, "{n}"),
-            ExprValue::Float(n) => write!(f, "{n}"),
-            ExprValue::Bool(b) => write!(f, "{b}"),
-            ExprValue::Nil => write!(f, "nil"),
-            ExprValue::String(s) => write!(
-                f,
-                r#""{}""#,
-                s.replace("\\", "\\\\")
-                    .replace("\n", "\\n")
-                    .replace("\r", "\\r")
-                    .replace("\t", "\\t")
-                    .replace("\"", "\\\"")
-            ),
-            ExprValue::Array(a) => write!(
-                f,
-                "[{}]",
-                a.iter()
-                    .map(|v| v.to_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            ExprValue::Map(m) => write!(
-                f,
-                "{{{}}}",
-                m.iter()
-                    .map(|(k, v)| format!("{}: {}", k, v))
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -340,6 +147,127 @@ impl<'a> ExprParser<'a> {
                 bail!("filter() takes an array as the first argument");
             }
             Ok(result.into())
+        });
+
+        p.add_function("trim", |c| {
+            if c.args.len() != 1 && c.args.len() != 2 {
+                bail!("trim() takes one or two arguments");
+            }
+            if let (ExprValue::String(s), None) = (&c.args[0], c.args.get(1)) {
+                Ok(s.trim().into())
+            } else if let (ExprValue::String(s), Some(ExprValue::String(chars))) = (&c.args[0], c.args.get(1)) {
+                Ok(s.trim_matches(|c| chars.contains(c)).into())
+            } else {
+                bail!("trim() takes a string as the first argument and an optional string of characters to trim");
+            }
+        });
+
+        p.add_function("trimPrefix", |c| {
+            if let (ExprValue::String(s), ExprValue::String(prefix)) = (&c.args[0], &c.args[1]) {
+                Ok(s.strip_prefix(prefix).unwrap_or(s).into())
+            } else {
+                bail!("trimPrefix() takes a string as the first argument and a string to trim as the second argument");
+            }
+        });
+
+        p.add_function("trimSuffix", |c| {
+            if let (ExprValue::String(s), ExprValue::String(suffix)) = (&c.args[0], &c.args[1]) {
+                Ok(s.strip_suffix(suffix).unwrap_or(s).into())
+            } else {
+                bail!("trimSuffix() takes a string as the first argument and a string to trim as the second argument");
+            }
+        });
+
+        p.add_function("upper", |c| {
+            if c.args.len() != 1 {
+                bail!("upper() takes one argument");
+            }
+            if let ExprValue::String(s) = &c.args[0] {
+                Ok(s.to_uppercase().into())
+            } else {
+                bail!("upper() takes a string as the first argument");
+            }
+        });
+
+        p.add_function("lower", |c| {
+            if c.args.len() != 1 {
+                bail!("lower() takes one argument");
+            }
+            if let ExprValue::String(s) = &c.args[0] {
+                Ok(s.to_lowercase().into())
+            } else {
+                bail!("lower() takes a string as the first argument");
+            }
+        });
+
+        p.add_function("split", |c| {
+            if let (ExprValue::String(s), ExprValue::String(sep), None) = (&c.args[0], &c.args[1], c.args.get(2)) {
+                Ok(s.split(sep).map(|s| ExprValue::from(s)).collect::<Vec<_>>().into())
+            } else if let (ExprValue::String(s), ExprValue::String(sep), Some(ExprValue::Number(n))) = (&c.args[0], &c.args[1], c.args.get(2)) {
+                Ok(s.splitn(*n as usize, sep).map(|s| ExprValue::from(s)).collect::<Vec<_>>().into())
+            } else {
+                bail!("split() takes a string as the first argument and a string as the second argument");
+            }
+        });
+
+        p.add_function("splitAfter", |c| {
+            if let (ExprValue::String(s), ExprValue::String(sep), None) = (&c.args[0], &c.args[1], c.args.get(2)) {
+                Ok(s.split_inclusive(sep).map(|s| ExprValue::from(s)).collect::<Vec<_>>().into())
+            } else if let (ExprValue::String(s), ExprValue::String(sep), Some(ExprValue::Number(n))) = (&c.args[0], &c.args[1], c.args.get(2)) {
+                let mut arr = s.split_inclusive(sep).take(*n as usize - 1).map(|s| s.to_string()).collect::<Vec<_>>();
+                arr.push(s.split_inclusive(sep).skip(*n as usize - 1).collect::<Vec<_>>().join(""));
+                Ok(arr.into())
+            } else {
+                bail!("splitAfter() takes a string as the first argument and a string as the second argument");
+            }
+        });
+
+        p.add_function("replace", |c| {
+            if let (ExprValue::String(s), ExprValue::String(from), ExprValue::String(to)) = (&c.args[0], &c.args[1], &c.args[2]) {
+                Ok(s.replace(from, to).into())
+            } else {
+                bail!("replace() takes a string as the first argument and two strings to replace");
+            }
+        });
+
+        p.add_function("repeat", |c| {
+            if let (ExprValue::String(s), ExprValue::Number(n)) = (&c.args[0], &c.args[1]) {
+                Ok(s.repeat(*n as usize+1).into())
+            } else {
+                bail!("repeat() takes a string as the first argument and a number as the second argument");
+            }
+        });
+
+        p.add_function("indexOf", |c| {
+            if let (ExprValue::String(s), ExprValue::String(sub)) = (&c.args[0], &c.args[1]) {
+                Ok(s.find(sub).map(|i| i as i64).unwrap_or(-1).into())
+            } else {
+                bail!("indexOf() takes a string as the first argument and a string to search for as the second argument");
+            }
+        });
+
+        p.add_function("lastIndexOf", |c| {
+            if let (ExprValue::String(s), ExprValue::String(sub)) = (&c.args[0], &c.args[1]) {
+                Ok(s.rfind(sub).map(|i| i as i64).unwrap_or(-1).into())
+            } else {
+                bail!("lastIndexOf() takes a string as the first argument and a string to search for as the second argument");
+            }
+        });
+
+        p.add_function("hasPrefix", |c| {
+            if let (ExprValue::String(s), ExprValue::String(prefix)) = (&c.args[0], &c.args[1]) {
+                Ok(s.starts_with(prefix).into())
+            } else {
+                bail!("hasPrefix() takes a string as the first argument and a string to search for as the second argument");
+            }
+        });
+
+        p.add_function("hasSuffix", |c| {
+            if let (ExprValue::String(s), ExprValue::String(suffix)) = (&c.args[0], &c.args[1]) {
+                Ok(s.ends_with(suffix).into())
+            } else {
+                bail!("hasSuffix() takes a string as the first argument and a string to search for as the second argument");
+            }
         });
 
         p
@@ -825,6 +753,27 @@ bar`"#,r#""foo\nbar""#);
         let ctx = ExprContext::default();
         assert_str_eq!(p.eval("add(1, 2, 3)", &ctx)?.to_string(), "6");
         assert_str_eq!(p.eval("3 | add(1, 2)", &ctx)?.to_string(), "6");
+        Ok(())
+    }
+
+    #[test]
+    fn string_functions() -> Result<()> {
+        test!("trim(\"  foo  \")", r#""foo""#);
+        test!("trim(\"__foo__\", \"_\")", r#""foo""#);
+        test!("trimPrefix(\"foo\", \"f\")", r#""oo""#);
+        test!("trimSuffix(\"foo\", \"oo\")", r#""f""#);
+        test!("upper(\"foo\")", r#""FOO""#);
+        test!("lower(\"FOO\")", r#""foo""#);
+        test!("split(\"foo,bar\", \",\")", r#"["foo", "bar"]"#);
+        test!(r#"split("apple,orange,grape", ",", 2)"#, r#"["apple", "orange,grape"]"#);
+        test!("splitAfter(\"foo,bar\", \",\")", r#"["foo,", "bar"]"#);
+        test!(r#"splitAfter("apple,orange,grape", ",", 2)"#, r#"["apple,", "orange,grape"]"#);
+        test!("replace(\"foo bar foo\", \"foo\", \"baz\")", r#""baz bar baz""#);
+        test!(r#"repeat("Hi", 2)"#, r#""HiHiHi""#);
+        test!("indexOf(\"foo bar foo\", \"bar\")", "4");
+        test!("lastIndexOf(\"foo bar foo\", \"foo\")", "8");
+        test!(r#"hasPrefix("HelloWorld", "Hello")"#, "true");
+        test!(r#"hasSuffix("HelloWorld", "World")"#, "true");
         Ok(())
     }
 
