@@ -669,122 +669,119 @@ mod tests {
     use super::*;
     use pretty_assertions::assert_str_eq;
 
-    macro_rules! eval {
-        ($code:expr) => {{
+    macro_rules! test {
+        ($code:expr, $expected:expr) => {{
             let ctx = ExprContext::default();
             let p = ExprParser::new();
             let code = $code;
-            p.eval(code, &ctx)
+            let result = p.eval(code, &ctx)
                 .map_err(|e| ExprError::from(format!("{code}: {e}")))
-                .map(|v| v.to_string())
+                .map(|v| v.to_string())?;
+            assert_str_eq!(result, $expected);
         }};
     }
 
     #[test]
     fn arithmetic() -> Result<()> {
-        assert_str_eq!(eval("2 + 3")?, "5");
-        assert_str_eq!(eval("2.1 + 3.2")?, "5.300000000000001");
-        assert_str_eq!(eval("2 - 3")?, "-1");
-        assert_str_eq!(eval("2.1 - 3.2")?, "-1.1");
-        assert_str_eq!(eval("2 * 3")?, "6");
-        assert_str_eq!(eval("2.1 * 3.2")?, "6.720000000000001");
-        assert_str_eq!(eval("7 / 3")?, "2");
-        assert_str_eq!(eval("7.0 / 3.0")?, "2.3333333333333335");
-        assert_str_eq!(eval("7 % 3")?, "1");
-        assert_str_eq!(eval("2 ** 3")?, "8");
-        assert_str_eq!(eval("2.0 ** 3.0")?, "8");
-        assert_str_eq!(eval("2 ^ 3")?, "8");
-        assert_str_eq!(eval("2.0 ^ 3.0")?, "8");
-        assert_str_eq!(eval("1 == 1")?, "true");
-        assert_str_eq!(eval("1 == 2")?, "false");
-        assert_str_eq!(eval("1 != 2")?, "true");
-        assert_str_eq!(eval("1 != 1")?, "false");
+        test!("2 + 3", "5");
+        test!("2 + 3", "5");
+        test!("2.1 + 3.2", "5.300000000000001");
+        test!("2 - 3", "-1");
+        test!("2.1 - 3.2", "-1.1");
+        test!("2 * 3", "6");
+        test!("2.1 * 3.2", "6.720000000000001");
+        test!("7 / 3", "2");
+        test!("7.0 / 3.0", "2.3333333333333335");
+        test!("7 % 3", "1");
+        test!("2 ** 3", "8");
+        test!("2.0 ** 3.0", "8");
+        test!("2 ^ 3", "8");
+        test!("2.0 ^ 3.0", "8");
+        test!("1 == 1", "true");
+        test!("1 == 2", "false");
+        test!("1 != 2", "true");
+        test!("1 != 1", "false");
         Ok(())
     }
 
     #[test]
     fn string() -> Result<()> {
-        assert_str_eq!(eval(r#""foo" + "bar""#)?, r#""foobar""#);
-        assert_str_eq!(eval(r#""foo" contains "o""#)?, "true");
-        assert_str_eq!(eval(r#""foo" contains "x""#)?, "false");
-        assert_str_eq!(eval(r#""foo" startsWith "f""#)?, "true");
-        assert_str_eq!(eval(r#""foo" startsWith "x""#)?, "false");
-        assert_str_eq!(eval(r#""foo" endsWith "o""#)?, "true");
-        assert_str_eq!(eval(r#""foo" endsWith "x""#)?, "false");
-        assert_str_eq!(eval(r#""foo" == "foo""#)?, "true");
-        assert_str_eq!(eval(r#""foo" == "bar""#)?, "false");
-        assert_str_eq!(eval(r#""foo" != "bar""#)?, "true");
-        assert_str_eq!(eval(r#""foo" != "foo""#)?, "false");
-        assert_str_eq!(eval(r#""bar" < "foo""#)?, "true");
-        assert_str_eq!(eval(r#""foo" < "foo""#)?, "false");
-        assert_str_eq!(eval(r#""foo" > "bar""#)?, "true");
-        assert_str_eq!(eval(r#""foo" > "foo""#)?, "false");
-        assert_str_eq!(eval(r#""bar" <= "foo""#)?, "true");
-        assert_str_eq!(eval(r#""foo" <= "foo""#)?, "true");
-        assert_str_eq!(eval(r#""bar" >= "foo""#)?, "false");
-        assert_str_eq!(eval(r#""foo" >= "foo""#)?, "true");
-        assert_str_eq!(eval(r#""foo" matches "^f""#)?, "true");
-        assert_str_eq!(eval(r#""foo" matches "^x""#)?, "false");
-        assert_str_eq!(
-            eval(
-                r#"`foo
-bar`"#
-            )?,
-            r#""foo\nbar""#
-        );
+        test!(r#""foo" + "bar""#, r#""foobar""#);
+        test!(r#""foo" contains "o""#, "true");
+        test!(r#""foo" contains "x""#, "false");
+        test!(r#""foo" startsWith "f""#, "true");
+        test!(r#""foo" startsWith "x""#, "false");
+        test!(r#""foo" endsWith "o""#, "true");
+        test!(r#""foo" endsWith "x""#, "false");
+        test!(r#""foo" == "foo""#, "true");
+        test!(r#""foo" == "bar""#, "false");
+        test!(r#""foo" != "bar""#, "true");
+        test!(r#""foo" != "foo""#, "false");
+        test!(r#""bar" < "foo""#, "true");
+        test!(r#""foo" < "foo""#, "false");
+        test!(r#""foo" > "bar""#, "true");
+        test!(r#""foo" > "foo""#, "false");
+        test!(r#""bar" <= "foo""#, "true");
+        test!(r#""foo" <= "foo""#, "true");
+        test!(r#""bar" >= "foo""#, "false");
+        test!(r#""foo" >= "foo""#, "true");
+        test!(r#""foo" matches "^f""#, "true");
+        test!(r#""foo" matches "^x""#, "false");
+        test!(r#"`foo
+bar`"#,r#""foo\nbar""#);
         Ok(())
     }
 
     #[test]
     fn nil() -> Result<()> {
-        assert_str_eq!(eval("nil")?, "nil");
-        assert_str_eq!(eval("!nil")?, "true");
-        assert_str_eq!(eval("!!nil")?, "false");
+        test!("nil", "nil");
+        test!("!nil", "true");
+        test!("!!nil", "false");
         Ok(())
     }
 
     #[test]
     fn logic() -> Result<()> {
-        assert_str_eq!(eval(r#"true && false"#)?, "false");
-        assert_str_eq!(eval(r#"true || false"#)?, "true");
-        assert_str_eq!(eval(r#"true == true"#)?, "true");
-        assert_str_eq!(eval(r#"true == false"#)?, "false");
-        assert_str_eq!(eval(r#"true != false"#)?, "true");
-        assert_str_eq!(eval(r#"true != true"#)?, "false");
-        assert_str_eq!(eval(r#"!true"#)?, "false");
-        assert_str_eq!(eval(r#"not true"#)?, "false");
+        test!(r#"true && false"#, "false");
+        test!(r#"true || false"#, "true");
+        test!(r#"true == true"#, "true");
+        test!(r#"true == false"#, "false");
+        test!(r#"true != false"#, "true");
+        test!(r#"true != true"#, "false");
+        test!(r#"!true"#, "false");
+        test!(r#"not true"#, "false");
         Ok(())
     }
 
     #[test]
     fn array() -> Result<()> {
-        assert_str_eq!(eval(r#"["foo","bar"]"#)?, r#"["foo", "bar"]"#);
-        assert_str_eq!(eval(r#""foo" in ["foo", "bar"]"#)?, "true");
-        assert_str_eq!(eval(r#""foo" in ["bar", "baz"]"#)?, "false");
-        assert_str_eq!(eval(r#"["foo", "bar"][0]"#)?, r#""foo""#);
-        assert_str_eq!(eval(r#"["foo", "bar"][1]"#)?, r#""bar""#);
-        assert_str_eq!(eval(r#"["foo", "bar"][2]"#)?, "nil");
-        assert_str_eq!(eval(r#"["foo", "bar"][-1]"#)?, r#""bar""#);
-        assert_str_eq!(eval(r#"["foo", "bar"][0:1]"#)?, r#"["foo"]"#);
-        assert_str_eq!(eval(r#"["foo", "bar"][0:2]"#)?, r#"["foo", "bar"]"#);
-        assert_str_eq!(eval(r#"["foo", "bar"][0:-1]"#)?, r#"["foo"]"#);
-        assert_str_eq!(eval(r#"["foo", "bar"][1:]"#)?, r#"["bar"]"#);
-        assert_str_eq!(eval(r#"["foo", "bar"][:1]"#)?, r#"["foo"]"#);
-        assert_str_eq!(eval(r#"["foo", "bar"][:]"#)?, r#"["foo", "bar"]"#);
+        test!(r#"["foo","bar"]"#, r#"["foo", "bar"]"#);
+        test!(r#""foo" in ["foo", "bar"]"#, "true");
+        test!(r#""foo" in ["bar", "baz"]"#, "false");
+        test!(r#"["foo", "bar"][0]"#, r#""foo""#);
+        test!(r#"["foo", "bar"][1]"#, r#""bar""#);
+        test!(r#"["foo", "bar"][2]"#, "nil");
+        test!(r#"["foo", "bar"][-1]"#, r#""bar""#);
+        test!(r#"["foo", "bar"][0:1]"#, r#"["foo"]"#);
+        test!(r#"["foo", "bar"][0:2]"#, r#"["foo", "bar"]"#);
+        test!(r#"["foo", "bar"][0:-1]"#, r#"["foo"]"#);
+        test!(r#"["foo", "bar"][1:]"#, r#"["bar"]"#);
+        test!(r#"["foo", "bar"][:1]"#, r#"["foo"]"#);
+        test!(r#"["foo", "bar"][:]"#, r#"["foo", "bar"]"#);
         Ok(())
     }
 
     #[test]
     fn map() -> Result<()> {
-        assert_str_eq!(eval(r#"{foo: "bar"}"#)?, r#"{foo: "bar"}"#);
-        assert_str_eq!(eval(r#"{foo: "bar"}.foo"#)?, r#""bar""#);
-        assert_str_eq!(eval(r#"{foo: "bar"}.baz"#)?, "nil");
-        assert_str_eq!(eval(r#"{foo: "bar"}["foo"]"#)?, r#""bar""#);
-        assert_str_eq!(eval(r#"{foo: "bar"}["baz"]"#)?, "nil");
-        assert_str_eq!(eval(r#"{foo: "bar"}?.foo"#)?, r#""bar""#);
-        assert_str_eq!(eval(r#"{foo: "bar"}?.bar?.foo"#)?, r#"nil"#);
-        assert_str_eq!(eval(r#""foo" in {foo: "bar"}"#)?, "true");
-        assert_str_eq!(eval(r#""bar" in {foo: "bar"}"#)?, "false");
+        test!(r#"{foo: "bar"}"#, r#"{foo: "bar"}"#);
+        test!(r#"{foo: "bar"}.foo"#, r#""bar""#);
+        test!(r#"{foo: "bar"}.baz"#, "nil");
+        test!(r#"{foo: "bar"}["foo"]"#, r#""bar""#);
+        test!(r#"{foo: "bar"}["baz"]"#, "nil");
+        test!(r#"{foo: "bar"}?.foo"#, r#""bar""#);
+        test!(r#"{foo: "bar"}?.bar?.foo"#, r#"nil"#);
+        test!(r#""foo" in {foo: "bar"}"#, "true");
+        test!(r#""bar" in {foo: "bar"}"#, "false");
         Ok(())
     }
 
@@ -833,43 +830,33 @@ bar`"#
 
     #[test]
     fn variables() -> Result<()> {
-        let p = ExprParser::new();
-        let ctx = ExprContext::default();
-        assert_str_eq!(p.eval("let x = 1; x", &ctx)?.to_string(), "1");
+        test!("let x = 1; x", "1");
         Ok(())
     }
 
     #[test]
     fn ternary() -> Result<()> {
-        assert_str_eq!(eval("true ? 1 : 2")?, "1");
-        assert_str_eq!(eval("false ? 1 : 2")?, "2");
+        test!("true ? 1 : 2", "1");
+        test!("false ? 1 : 2", "2");
         Ok(())
     }
 
     #[test]
     fn nil_coalesce() -> Result<()> {
-        assert_str_eq!(eval("nil ?? 1")?, "1");
-        assert_str_eq!(eval("2 ?? 1")?, "2");
+        test!("nil ?? 1", "1");
+        test!("2 ?? 1", "2");
         Ok(())
     }
 
     #[test]
     fn range() -> Result<()> {
-        assert_str_eq!(eval("1..3 == [1, 2, 3]")?, "true");
+        test!("1..3 == [1, 2, 3]", "true");
         Ok(())
     }
 
     #[test]
     fn filter() -> Result<()> {
-        assert_str_eq!(eval!("filter(0..9, {# % 2 == 0})")?, "[0, 2, 4, 6, 8]");
+        test!("filter(0..9, {# % 2 == 0})", "[0, 2, 4, 6, 8]");
         Ok(())
-    }
-
-    fn eval(code: &str) -> Result<String> {
-        let ctx = ExprContext::default();
-        let p = ExprParser::new();
-        p.eval(code, &ctx)
-            .map_err(|e| format!("{code}: {e}").into())
-            .map(|v| v.to_string())
     }
 }
