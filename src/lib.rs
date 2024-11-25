@@ -13,7 +13,7 @@ use indexmap::IndexMap;
 use lalrpop_util::lalrpop_mod;
 use std::collections::HashMap;
 use std::fmt;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 use std::iter::once;
 use thiserror::Error;
 
@@ -26,6 +26,13 @@ pub enum ExprError {
     EvalError(String),
     #[error("Regex error: {0}")]
     RegexError(#[from] regex::Error),
+}
+
+
+impl From<String> for ExprError {
+    fn from(s: String) -> Self {
+        ExprError::EvalError(s)
+    }
 }
 
 type Result<T> = std::result::Result<T, ExprError>;
@@ -257,17 +264,25 @@ enum Opcode {
 /// let p = ExprParser::new();
 /// assert_eq!(p.eval("foo + bar", ctx).unwrap().to_string(), "3");
 /// ```
-#[derive(Default, Debug, Clone)]
-pub struct ExprParser {
-    functions: HashMap<String, fn(Vec<ExprValue>) -> ExprValue>,
+#[derive(Default)]
+pub struct ExprParser<'a> {
+    functions: HashMap<String, Box<dyn Fn(&Vec<ExprValue>) -> Result<ExprValue> + 'a + Sync + Send>>,
+}
+
+impl Debug for ExprParser<'_> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_struct("ExprParser").finish()
+    }
 }
 
 lalrpop_mod!(grammar);
 
-impl ExprParser {
+impl<'a> ExprParser<'a> {
     /// Create a new parser
     pub fn new() -> Self {
-        Default::default()
+        Self {
+            functions: HashMap::new(),
+        }
     }
 
     /// Add a function for expr programs to call
@@ -287,13 +302,16 @@ impl ExprParser {
     ///          panic!("Invalid argument: {arg:?}");
     ///        }
     ///     }
-    ///   sum.into()
+    ///   Ok(sum.into())
     /// });
     /// let ctx: HashMap<String, String> = HashMap::new();
     /// assert_eq!(p.eval("add(1, 2, 3)", ctx).unwrap().to_string(), "6");
     /// ```
-    pub fn add_function(&mut self, name: &str, f: fn(Vec<ExprValue>) -> ExprValue) {
-        self.functions.insert(name.to_string(), f);
+    pub fn add_function<F>(&mut self, name: &str, f: F)
+    where
+        F: Fn(&Vec<ExprValue>) -> Result<ExprValue> + 'a + Sync + Send,
+    {
+        self.functions.insert(name.to_string(), Box::new(f));
     }
 
     /// Parse an expr program to be run later
@@ -365,7 +383,7 @@ impl ExprParser {
                     .map(|e| parse(*e))
                     .collect::<Result<Vec<_>>>()?;
                 if let Some(f) = self.functions.get(&name) {
-                    f(args)
+                    f(&args)?
                 } else {
                     bail!("Unknown function: {name}")
                 }
@@ -429,7 +447,7 @@ impl ExprParser {
                             .into_iter()
                             .chain(once(lhs))
                             .collect();
-                        f(args)
+                        f(&args)?
                     } else {
                         bail!("Unknown function: {name}")
                     }
@@ -691,17 +709,19 @@ bar`"#
 
     #[test]
     fn functions() {
+        let x = "s";
         let mut p = ExprParser::new();
-        p.add_function("add", |args| {
+        p.add_function("add", |args: &Vec<ExprValue>| -> Result<ExprValue> {
+            eprintln!("{}", x);
             let mut sum = 0;
             for arg in args {
                 if let ExprValue::Number(n) = arg {
                     sum += n;
                 } else {
-                    panic!("Invalid argument: {arg:?}");
+                    return Err(format!("Invalid argument: {arg:?}").into());
                 }
             }
-            sum.into()
+            Ok(sum.into())
         });
         let ctx: HashMap<String, String> = HashMap::new();
         assert_str_eq!(p.eval("add(1, 2, 3)", &ctx).unwrap().to_string(), "6");
