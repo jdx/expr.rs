@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2024-11-29
+
+### ⚙️ Miscellaneous Tasks
+
+- Release expr-lang version 0.2.0
+
 ## [0.1.6] - 2024-11-25
 
 ### 🚀 Features
