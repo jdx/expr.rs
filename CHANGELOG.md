@@ -20,6 +20,10 @@ All notable changes to this project will be documented in this file.
 
 - Refactor
 
+### ⚙️ Miscellaneous Tasks
+
+- Release expr-lang version 0.1.6
+
 ## [0.1.5] - 2024-11-25
 
 ### 🐛 Bug Fixes
