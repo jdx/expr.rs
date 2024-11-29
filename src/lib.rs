@@ -38,4 +38,8 @@ pub use crate::error::{Error, Result};
 pub use crate::parser::Parser;
 pub use crate::value::Value;
 
-pub(crate) use crate::pest::Rule;
+use pest_derive::Parser as PestParser;
+
+#[derive(PestParser)]
+#[grammar = "expr.pest"]
+pub(crate) struct ExprPest;

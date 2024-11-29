@@ -1,6 +1,6 @@
 use std::iter::once;
 use crate::ast::node::Node;
-use crate::pest::Rule;
+use crate::Rule;
 use crate::{bail, Result};
 use crate::{Context, Parser, Value};
 use log::trace;
@@ -43,7 +43,6 @@ impl From<Pair<'_, Rule>> for PostfixOperator {
                 let mut inner = pair.into_inner();
                 let left = Box::new(inner.next().unwrap().into());
                 let right = Box::new(inner.next().unwrap().into());
-                dbg!(&left, &right);
                 PostfixOperator::Ternary { left, right }
             }
             Rule::pipe => PostfixOperator::Pipe(Box::new(pair.into_inner().into())),
@@ -79,11 +78,8 @@ impl Parser<'_> {
             },
             PostfixOperator::Range(start, end) => match value {
                 Value::Array(arr) => {
-                    dbg!(&arr);
-                    dbg!(start, end);
                     let start = i64_to_idx(start.unwrap_or(0), arr.len());
                     let end = i64_to_idx(end.unwrap_or(arr.len() as i64), arr.len());
-                    dbg!(start, end);
                     let result = arr[start..end].to_vec();
                     Value::Array(result)
                 }

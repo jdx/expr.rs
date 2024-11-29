@@ -1,5 +1,5 @@
 use crate::ast::node::Node;
-use crate::pest::Rule;
+use crate::Rule;
 use pest::iterators::{Pair, Pairs};
 
 /// A parsed expr program that can be run

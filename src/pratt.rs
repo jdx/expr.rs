@@ -1,4 +1,4 @@
-use crate::pest::Rule;
+use crate::Rule;
 use once_cell::sync::Lazy;
 use pest::pratt_parser::PrattParser;
 

@@ -53,7 +53,6 @@ pub fn add_string_functions(p: &mut Parser) {
     });
 
     p.add_function("split", |c| {
-        dbg!(&c.args);
         if let (Value::String(s), Value::String(sep), None) = (&c.args[0], &c.args[1], c.args.get(2)) {
             Ok(s.split(sep).map(Value::from).collect::<Vec<_>>().into())
         } else if let (Value::String(s), Value::String(sep), Some(Value::Number(n))) = (&c.args[0], &c.args[1], c.args.get(2)) {

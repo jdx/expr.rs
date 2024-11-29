@@ -1,6 +1,6 @@
 use crate::ast::node::Node;
 use crate::ast::unary_operator::UnaryOperator::Not;
-use crate::pest::Rule;
+use crate::Rule;
 use crate::Value::Bool;
 use crate::{bail, Result};
 use crate::{Context, Parser, Value};

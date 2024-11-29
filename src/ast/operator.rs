@@ -1,7 +1,6 @@
 use crate::ast::node::Node;
-use crate::pest::Rule;
 use crate::Value::{Array, Bool, Float, Map, Number, String};
-use crate::{bail, Result};
+use crate::{bail, Result, Rule};
 use crate::{Context, Parser, Value};
 use pest::iterators::{Pair};
 use std::str::FromStr;
