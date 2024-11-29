@@ -9,9 +9,8 @@ homepage = "https://github.com/jdx/expr-lang"
 repository = "https://github.com/jdx/expr-lang"
 description = "Implementation of expr language in Rust"
 include = [
-    "/src/**/*.lalrpop",
+    "/src/**/*.pest",
     "/src/**/*.rs",
-    "/build.rs",
 ]
 
 [lib]
