@@ -36,6 +36,7 @@ mod value;
 pub use crate::context::Context;
 pub use crate::error::{Error, Result};
 pub use crate::parser::Parser;
+pub use crate::ast::program::Program;
 pub use crate::value::Value;
 
 use pest_derive::Parser as PestParser;
