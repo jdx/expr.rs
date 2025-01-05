@@ -63,6 +63,9 @@ test!(false_1, "false", "false");
 test!(and_1, "true && true", "true");
 test!(and_2, "true && false", "false");
 test!(and_3, "false && true", "false");
+test!(and_4, "true and true", "true");
+test!(and_5, "false and true", "false");
+test!(and_6, "false or true", "true");
 
 test!(string_concat, r#""foo" + "bar""#, r#""foobar""#);
 test!(string_contains, r#""foo" contains "o""#, "true");
@@ -274,6 +277,40 @@ fn range() -> Result<()> {
 #[test]
 fn filter() -> Result<()> {
     test_old!("filter(0..9, {# % 2 == 0})", "[0, 2, 4, 6, 8]");
+    Ok(())
+}
+
+#[test]
+fn version_expressions() -> Result<()> {
+    // https://github.com/jdx/mise/discussions/3944#discussion-7778007
+    let ctx = Context::from_iter([("Version".to_string(), "1.0.0".to_string())]);
+    let mut p = Parser::new();
+
+    // mock semver function for testing
+    p.add_function("semver", |c| -> Result<Value> {
+        if c.args.len() != 1 {
+            return Err("semver() expects 1 argument".to_string().into());
+        }
+        Ok(Value::Bool(true))
+    });
+
+    assert_eq!(
+        p.eval(r#"Version in ["latest", "stable"]"#, &ctx)?.to_string(),
+        "false"
+    );
+    assert_eq!(
+        p.eval(r#"not (Version in ["latest", "stable"])"#, &ctx)?.to_string(),
+        "true"
+    );
+    assert_eq!(
+        p.eval(r#"(not (Version in ["latest", "stable"])) and semver("> 0.4.5")"#, &ctx)?.to_string(),
+        "true"
+    );
+    assert_eq!(
+        p.eval(r#"(not (Version in ["latest", "stable"])) && semver("> 0.4.5")"#, &ctx)?.to_string(),
+        "true"
+    );
+
     Ok(())
 }
 

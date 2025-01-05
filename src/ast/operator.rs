@@ -32,9 +32,9 @@ pub enum Operator {
     LessThan,
     #[strum(serialize = "<=")]
     LessThanOrEqual,
-    #[strum(serialize = "&&")]
+    #[strum(serialize = "&&", serialize = "and")]
     And,
-    #[strum(serialize = "||")]
+    #[strum(serialize = "||", serialize = "or")]
     Or,
     #[strum(serialize = "in")]
     In,
