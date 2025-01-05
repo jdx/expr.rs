@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.2] - 2025-01-05
+
+### 🐛 Bug Fixes
+
+- Add "and" and "or" for logical operator
+
+## [0.2.1] - 2024-11-29
+
+### ⚙️ Miscellaneous Tasks
+
+- Release expr-lang version 0.2.1
+
 ## [0.2.0] - 2024-11-29
 
 ### ⚙️ Miscellaneous Tasks
