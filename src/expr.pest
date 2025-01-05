@@ -24,8 +24,8 @@ factor_op         =  { "**" | "*" | "/" | "%" | "^" }
 addition_op       =  { "+" | "-" }
 comparison_op     =  { "<=" | ">=" | "<" | ">" }
 equal_op          =  { "==" | "!=" }
-and_op            =  { "&&" }
-or_op             =  { "||" }
+and_op            =  { "&&" | "and" }
+or_op             =  { "||" | "or" }
 string_op         =  { "in" | "contains" | "startsWith" | "endsWith" | "matches" }
 
 value            =  { string | string_multiline | decimal | int | bool | nil }
