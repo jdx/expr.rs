@@ -12,6 +12,12 @@ pub enum Error {
     ExprError(String),
     #[error(transparent)]
     RegexError(#[from] regex::Error),
+    #[cfg(feature = "serde")]
+    #[error("{0}")]
+    DeserializeError(String),
+    #[cfg(feature = "serde")]
+    #[error("{0}")]
+    SerializeError(String),
 }
 
 impl From<String> for Error {
@@ -27,6 +33,10 @@ impl Debug for Error {
             Error::ParseError(e) => write!(f, "ParseError: {}", e),
             Error::ExprError(e) => write!(f, "ExprError: {}", e),
             Error::RegexError(e) => write!(f, "RegexError: {}", e),
+            #[cfg(feature = "serde")]
+            Error::DeserializeError(e) => write!(f, "DeserializeError: {}", e),
+            #[cfg(feature = "serde")]
+            Error::SerializeError(e) => write!(f, "SerializeError: {}", e),
         }
     }
 }
