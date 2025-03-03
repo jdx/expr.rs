@@ -3,7 +3,7 @@ use crate::ast::unary_operator::UnaryOperator::Not;
 use crate::Rule;
 use crate::Value::Bool;
 use crate::{bail, Result};
-use crate::{Context, Parser, Value};
+use crate::{Context, Environment, Value};
 use log::trace;
 use pest::iterators::Pair;
 use std::str::FromStr;
@@ -25,7 +25,7 @@ impl From<Pair<'_, Rule>> for UnaryOperator {
     }
 }
 
-impl Parser<'_> {
+impl Environment<'_> {
     pub fn eval_unary_operator(
         &self,
         ctx: &Context,

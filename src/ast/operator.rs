@@ -1,7 +1,7 @@
 use crate::ast::node::Node;
 use crate::Value::{Array, Bool, Float, Map, Number, String};
 use crate::{bail, Result, Rule};
-use crate::{Context, Parser, Value};
+use crate::{Context, Environment, Value};
 use pest::iterators::{Pair};
 use std::str::FromStr;
 use log::trace;
@@ -58,7 +58,7 @@ impl From<Pair<'_, Rule>> for Operator {
     }
 }
 
-impl Parser<'_> {
+impl Environment<'_> {
     pub fn eval_operator(
         &self,
         ctx: &Context,

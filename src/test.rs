@@ -1,4 +1,6 @@
 use crate::{Context, Value};
+use crate::{Environment, eval};
+#[allow(deprecated)]
 use crate::Parser;
 use crate::Result;
 use proptest::prelude::*;
@@ -22,11 +24,10 @@ macro_rules! test {
 macro_rules! check {
     ($code:expr$(, $expected:tt)+) => {{
         let ctx = Context::default();
-        let p = Parser::new();
         let code = $code;
         let expected = format!($($expected)+);
         println!("{} => {} (expected)", code, expected);
-        let result = p.eval(&code, &ctx).unwrap();
+        let result = eval(&code, &ctx).unwrap();
         println!("{} => {}", code, result);
         assert_eq!(result.to_string(), expected);
         Result::Ok(())
@@ -155,19 +156,18 @@ fn map() -> Result<()> {
 #[test]
 fn context() -> Result<()> {
     let ctx = Context::from_iter([("Version".to_string(), "v1.0.0".to_string())]);
-    let p = Parser::new();
     assert_eq!(
-        p.eval(r#"Version matches "^v\\d+\\.\\d+\\.\\d+""#, &ctx)?
+        eval(r#"Version matches "^v\\d+\\.\\d+\\.\\d+""#, &ctx)?
             .to_string(),
         "true"
     );
-    assert_eq!(p.eval(r#""Version" in $env"#, &ctx)?.to_string(), r#"true"#);
+    assert_eq!(eval(r#""Version" in $env"#, &ctx)?.to_string(), r#"true"#);
     assert_eq!(
-        p.eval(r#""version" in $env"#, &ctx)?.to_string(),
+        eval(r#""version" in $env"#, &ctx)?.to_string(),
         r#"false"#
     );
     assert_eq!(
-        p.eval(r#"$env["Version"]"#, &ctx)?.to_string(),
+        eval(r#"$env["Version"]"#, &ctx)?.to_string(),
         r#""v1.0.0""#
     );
     Ok(())
@@ -175,6 +175,29 @@ fn context() -> Result<()> {
 
 #[test]
 fn functions() -> Result<()> {
+    let x = "s";
+    let mut env = Environment::new();
+    env.add_function("add", |c| -> Result<Value> {
+        eprintln!("{}", x);
+        let mut sum = 0;
+        for arg in c.args {
+            if let Value::Number(n) = arg {
+                sum += n;
+            } else {
+                return Err(format!("Invalid argument: {arg:?}").into());
+            }
+        }
+        Ok(sum.into())
+    });
+    let ctx = Context::default();
+    assert_eq!(env.eval("add(1, 2, 3)", &ctx)?.to_string(), "6");
+    assert_eq!(env.eval("3 | add(1, 2)", &ctx)?.to_string(), "6");
+    Ok(())
+}
+
+#[test]
+#[allow(deprecated)]
+fn functions_with_parser() -> Result<()> {
     let x = "s";
     let mut p = Parser::new();
     p.add_function("add", |c| -> Result<Value> {
@@ -284,10 +307,10 @@ fn filter() -> Result<()> {
 fn version_expressions() -> Result<()> {
     // https://github.com/jdx/mise/discussions/3944#discussion-7778007
     let ctx = Context::from_iter([("Version".to_string(), "1.0.0".to_string())]);
-    let mut p = Parser::new();
+    let mut env = Environment::new();
 
     // mock semver function for testing
-    p.add_function("semver", |c| -> Result<Value> {
+    env.add_function("semver", |c| -> Result<Value> {
         if c.args.len() != 1 {
             return Err("semver() expects 1 argument".to_string().into());
         }
@@ -295,19 +318,19 @@ fn version_expressions() -> Result<()> {
     });
 
     assert_eq!(
-        p.eval(r#"Version in ["latest", "stable"]"#, &ctx)?.to_string(),
+        env.eval(r#"Version in ["latest", "stable"]"#, &ctx)?.to_string(),
         "false"
     );
     assert_eq!(
-        p.eval(r#"not (Version in ["latest", "stable"])"#, &ctx)?.to_string(),
+        env.eval(r#"not (Version in ["latest", "stable"])"#, &ctx)?.to_string(),
         "true"
     );
     assert_eq!(
-        p.eval(r#"(not (Version in ["latest", "stable"])) and semver("> 0.4.5")"#, &ctx)?.to_string(),
+        env.eval(r#"(not (Version in ["latest", "stable"])) and semver("> 0.4.5")"#, &ctx)?.to_string(),
         "true"
     );
     assert_eq!(
-        p.eval(r#"(not (Version in ["latest", "stable"])) && semver("> 0.4.5")"#, &ctx)?.to_string(),
+        env.eval(r#"(not (Version in ["latest", "stable"])) && semver("> 0.4.5")"#, &ctx)?.to_string(),
         "true"
     );
 
