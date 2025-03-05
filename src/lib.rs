@@ -30,6 +30,8 @@ mod functions;
 mod parser;
 mod pest;
 mod pratt;
+#[cfg(feature = "serde")]
+mod serde;
 #[cfg(test)]
 mod test;
 mod value;
@@ -42,6 +44,8 @@ pub use crate::parser::compile;
 pub use crate::parser::Parser;
 pub use crate::ast::program::Program;
 pub use crate::value::Value;
+#[cfg(feature = "serde")]
+pub use crate::serde::{from_value, to_value};
 
 use pest_derive::Parser as PestParser;
 

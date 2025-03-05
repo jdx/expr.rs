@@ -2,11 +2,15 @@ use crate::Rule;
 use indexmap::IndexMap;
 use log::trace;
 use pest::iterators::{Pair, Pairs};
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::{Display, Formatter};
 
 /// Represents a data value as input or output to an expr program
 #[derive(Debug, Default, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(untagged))]
 pub enum Value {
     Number(i64),
     Bool(bool),
@@ -63,6 +67,17 @@ impl Value {
 
     pub fn is_nil(&self) -> bool {
         matches!(self, Value::Nil)
+    }
+}
+
+impl<K, V> FromIterator<(K, V)> for Value
+where
+    K: Into<String>, 
+    V: Into<Value>,
+{
+    fn from_iter<I>(iter: I) -> Self
+    where I: IntoIterator<Item = (K, V)> {
+        Value::Map(iter.into_iter().map(|(k, v)| (k.into(), v.into())).collect())
     }
 }
 
