@@ -1,7 +1,7 @@
-use crate::{bail, Parser, Value};
+use crate::{bail, Environment, Value};
 
-pub fn add_string_functions(p: &mut Parser) {
-    p.add_function("trim", |c| {
+pub fn add_string_functions(env: &mut Environment) {
+    env.add_function("trim", |c| {
         if c.args.len() != 1 && c.args.len() != 2 {
             bail!("trim() takes one or two arguments");
         }
@@ -14,7 +14,7 @@ pub fn add_string_functions(p: &mut Parser) {
         }
     });
 
-    p.add_function("trimPrefix", |c| {
+    env.add_function("trimPrefix", |c| {
         if let (Value::String(s), Value::String(prefix)) = (&c.args[0], &c.args[1]) {
             Ok(s.strip_prefix(prefix).unwrap_or(s).into())
         } else {
@@ -22,7 +22,7 @@ pub fn add_string_functions(p: &mut Parser) {
         }
     });
 
-    p.add_function("trimSuffix", |c| {
+    env.add_function("trimSuffix", |c| {
         if let (Value::String(s), Value::String(suffix)) = (&c.args[0], &c.args[1]) {
             Ok(s.strip_suffix(suffix).unwrap_or(s).into())
         } else {
@@ -30,7 +30,7 @@ pub fn add_string_functions(p: &mut Parser) {
         }
     });
 
-    p.add_function("upper", |c| {
+    env.add_function("upper", |c| {
         if c.args.len() != 1 {
             bail!("upper() takes one argument");
         }
@@ -41,7 +41,7 @@ pub fn add_string_functions(p: &mut Parser) {
         }
     });
 
-    p.add_function("lower", |c| {
+    env.add_function("lower", |c| {
         if c.args.len() != 1 {
             bail!("lower() takes one argument");
         }
@@ -52,7 +52,7 @@ pub fn add_string_functions(p: &mut Parser) {
         }
     });
 
-    p.add_function("split", |c| {
+    env.add_function("split", |c| {
         if let (Value::String(s), Value::String(sep), None) = (&c.args[0], &c.args[1], c.args.get(2)) {
             Ok(s.split(sep).map(Value::from).collect::<Vec<_>>().into())
         } else if let (Value::String(s), Value::String(sep), Some(Value::Number(n))) = (&c.args[0], &c.args[1], c.args.get(2)) {
@@ -62,7 +62,7 @@ pub fn add_string_functions(p: &mut Parser) {
         }
     });
 
-    p.add_function("splitAfter", |c| {
+    env.add_function("splitAfter", |c| {
         if let (Value::String(s), Value::String(sep), None) = (&c.args[0], &c.args[1], c.args.get(2)) {
             Ok(s.split_inclusive(sep).map(Value::from).collect::<Vec<_>>().into())
         } else if let (Value::String(s), Value::String(sep), Some(Value::Number(n))) = (&c.args[0], &c.args[1], c.args.get(2)) {
@@ -74,7 +74,7 @@ pub fn add_string_functions(p: &mut Parser) {
         }
     });
 
-    p.add_function("replace", |c| {
+    env.add_function("replace", |c| {
         if let (Value::String(s), Value::String(from), Value::String(to)) =
             (&c.args[0], &c.args[1], &c.args[2])
         {
@@ -84,7 +84,7 @@ pub fn add_string_functions(p: &mut Parser) {
         }
     });
 
-    p.add_function("repeat", |c| {
+    env.add_function("repeat", |c| {
         if let (Value::String(s), Value::Number(n)) = (&c.args[0], &c.args[1]) {
             Ok(s.repeat(*n as usize + 1).into())
         } else {
@@ -92,7 +92,7 @@ pub fn add_string_functions(p: &mut Parser) {
         }
     });
 
-    p.add_function("indexOf", |c| {
+    env.add_function("indexOf", |c| {
         if let (Value::String(s), Value::String(sub)) = (&c.args[0], &c.args[1]) {
             Ok(s.find(sub).map(|i| i as i64).unwrap_or(-1).into())
         } else {
@@ -100,7 +100,7 @@ pub fn add_string_functions(p: &mut Parser) {
         }
     });
 
-    p.add_function("lastIndexOf", |c| {
+    env.add_function("lastIndexOf", |c| {
         if let (Value::String(s), Value::String(sub)) = (&c.args[0], &c.args[1]) {
             Ok(s.rfind(sub).map(|i| i as i64).unwrap_or(-1).into())
         } else {
@@ -108,7 +108,7 @@ pub fn add_string_functions(p: &mut Parser) {
         }
     });
 
-    p.add_function("hasPrefix", |c| {
+    env.add_function("hasPrefix", |c| {
         if let (Value::String(s), Value::String(prefix)) = (&c.args[0], &c.args[1]) {
             Ok(s.starts_with(prefix).into())
         } else {
@@ -116,7 +116,7 @@ pub fn add_string_functions(p: &mut Parser) {
         }
     });
 
-    p.add_function("hasSuffix", |c| {
+    env.add_function("hasSuffix", |c| {
         if let (Value::String(s), Value::String(suffix)) = (&c.args[0], &c.args[1]) {
             Ok(s.ends_with(suffix).into())
         } else {

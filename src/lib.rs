@@ -24,6 +24,7 @@
 //! ```
 mod ast;
 mod context;
+mod eval;
 mod error;
 mod functions;
 mod parser;
@@ -37,6 +38,9 @@ mod value;
 
 pub use crate::context::Context;
 pub use crate::error::{Error, Result};
+pub use crate::eval::{Environment, run, eval};
+pub use crate::parser::compile;
+#[allow(deprecated)]
 pub use crate::parser::Parser;
 pub use crate::ast::program::Program;
 pub use crate::value::Value;
