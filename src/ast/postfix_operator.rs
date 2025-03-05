@@ -2,7 +2,7 @@ use std::iter::once;
 use crate::ast::node::Node;
 use crate::Rule;
 use crate::{bail, Result};
-use crate::{Context, Parser, Value};
+use crate::{Context, Environment, Value};
 use log::trace;
 use pest::iterators::Pair;
 
@@ -51,7 +51,7 @@ impl From<Pair<'_, Rule>> for PostfixOperator {
     }
 }
 
-impl Parser<'_> {
+impl Environment<'_> {
     pub fn eval_postfix_operator(
         &self,
         ctx: &Context,
@@ -105,7 +105,7 @@ impl Parser<'_> {
                         .map(|arg| self.eval_expr(ctx, arg))
                         .chain(once(Ok(value)))
                         .collect::<Result<Vec<Value>>>()?;
-                    self.exec_func(ctx, ident, args, predicate.map(|p| *p))?
+                    self.eval_func(ctx, ident, args, predicate.map(|p| *p))?
                 } else {
                     bail!("Invalid operand for operator |");
                 }
