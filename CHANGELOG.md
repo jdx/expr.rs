@@ -2,11 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2025-03-18
+
+### ⚙️ Miscellaneous Tasks
+
+- Strum 0.27
+
 ## [0.2.2] - 2025-01-05
 
 ### 🐛 Bug Fixes
 
 - Add "and" and "or" for logical operator
+
+### ⚙️ Miscellaneous Tasks
+
+- Release expr-lang version 0.2.2
 
 ## [0.2.1] - 2024-11-29
 
