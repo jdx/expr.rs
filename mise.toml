@@ -10,6 +10,11 @@ run = [
   "pestfmt src/expr.pest",
 ]
 
+[tasks.test]
+alias = "t"
+depends = ["lint"]
+run = "cargo test"
+
 [tasks.release]
 run = [
   "cargo release -x",
