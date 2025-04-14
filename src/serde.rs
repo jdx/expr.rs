@@ -421,6 +421,7 @@ impl serde::ser::SerializeStructVariant for SerializeStructVariant {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::value;
     use serde::{Deserialize, Serialize};
     use std::collections::HashMap;
 
@@ -453,19 +454,17 @@ mod tests {
     }
 
     fn test_value() -> Value {
-        Value::from_iter([
-            ("a", Value::from("hello")),
-            ("b", Value::from(123)),
-            ("c", Value::from_iter([
-                ("x", 1.0),
-                ("y", 2.0),
-            ])),
-            ("d", Value::from(vec![
-                Value::from_iter([
-                    ("j", "k"),
-                ]),
-            ])),
-        ])
+        value!({
+            "a": "hello",
+            "b": 123,
+            "c": {
+                "x": 1.0,
+                "y": 2.0,
+            },
+            "d": [{
+                "j": "k",
+            }],
+        })
     }
 
     fn test_json() -> String {
