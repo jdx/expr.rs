@@ -52,3 +52,13 @@ use pest_derive::Parser as PestParser;
 #[derive(PestParser)]
 #[grammar = "expr.pest"]
 pub(crate) struct ExprPest;
+
+#[macro_use]
+mod macros;
+
+// Non-public API. Used from macro-generated code.
+#[doc(hidden)]
+pub mod __private {
+    #[doc(hidden)]
+    pub use indexmap::IndexMap;
+}
