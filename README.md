@@ -34,7 +34,7 @@ fn main() {
 
 ```
 [dependencies]
-expr = { version = "0.2", features = ["serde"] }
+expr-lang = { version = "0.3", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 ```
 
