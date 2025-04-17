@@ -32,7 +32,7 @@ fn main() {
 
 #### Converting expr values to/from rust types
 
-```
+```toml
 [dependencies]
 expr-lang = { version = "0.3", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
@@ -66,7 +66,7 @@ fn main() {
 
 ```toml
 [dependencies]
-expr = { version = "0.2", features = ["serde"] }
+expr-lang = { version = "0.3", features = ["serde"] }
 serde_json = "1.0"
 ```
 
