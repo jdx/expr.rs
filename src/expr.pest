@@ -3,7 +3,7 @@ program =  { stmt* ~ expr }
 stmt    =  { "let" ~ ident ~ "=" ~ expr ~ ";" }
 expr    =  { prefix? ~ term ~ postfix* ~ (infix ~ prefix? ~ term ~ postfix*)* }
 
-prefix  = _{ unary_op }
+prefix  = _{ negation_op | sign_op }
 infix   = _{ exponent_op | multiplication_op | addition_op | comparison_op | equal_op | and_op | or_op | string_op }
 postfix = _{ ternary | range_start_op | range_end_op | opt_membership_op | opt_index_op | membership_op | index_op | default_op | pipe }
 
@@ -19,7 +19,8 @@ default_op        =  { "??" ~ expr }
 index_op          =  { "[" ~ expr ~ "]" }
 range_start_op    =  { "[" ~ expr ~ ":" ~ expr? ~ "]" }
 range_end_op      =  { "[" ~ ":" ~ expr? ~ "]" }
-unary_op          =  { "!" | "not" }
+negation_op       =  { "!" | "not" }
+sign_op           =  { "+" | "-" }
 exponent_op       =  { "**" | "^" }
 multiplication_op =  { "*" | "/" | "%" }
 addition_op       =  { "+" | "-" }
@@ -38,10 +39,10 @@ string_multiline = ${ "`" ~ inner_multiline ~ "`" }
 inner_single     = @{ char_single* }
 inner_double     = @{ char_double* }
 inner_multiline  = @{ (!"`" ~ ANY)* }
-int              = @{ ("+" | "-")? ~ ASCII_DIGIT+ ~ (ASCII_DIGIT | "_")* }
+int              = @{ ASCII_DIGIT+ ~ (ASCII_DIGIT | "_")* }
 bool             =  { "true" | "false" }
 nil              =  { "nil" }
-decimal          = @{ ("+" | "-")? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
+decimal          = @{ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
 
 ident         = @{ "#" | (("$" | ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")*) }
 char_single   =  {
