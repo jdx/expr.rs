@@ -4,7 +4,7 @@ stmt    =  { "let" ~ ident ~ "=" ~ expr ~ ";" }
 expr    =  { prefix? ~ term ~ postfix* ~ (infix ~ prefix? ~ term ~ postfix*)* }
 
 prefix  = _{ unary_op }
-infix   = _{ factor_op | addition_op | comparison_op | equal_op | and_op | or_op | string_op }
+infix   = _{ exponent_op | multiplication_op | addition_op | comparison_op | equal_op | and_op | or_op | string_op }
 postfix = _{ ternary | range_start_op | range_end_op | opt_membership_op | opt_index_op | membership_op | index_op | default_op | pipe }
 
 func              =  { ident ~ "(" ~ (expr ~ ("," ~ expr)*)? ~ (","? ~ predicate)? ~ ")" }
@@ -20,7 +20,8 @@ index_op          =  { "[" ~ expr ~ "]" }
 range_start_op    =  { "[" ~ expr ~ ":" ~ expr? ~ "]" }
 range_end_op      =  { "[" ~ ":" ~ expr? ~ "]" }
 unary_op          =  { "!" | "not" }
-factor_op         =  { "**" | "*" | "/" | "%" | "^" }
+exponent_op       =  { "**" | "^" }
+multiplication_op =  { "*" | "/" | "%" }
 addition_op       =  { "+" | "-" }
 comparison_op     =  { "<=" | ">=" | "<" | ">" }
 equal_op          =  { "==" | "!=" }
