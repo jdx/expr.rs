@@ -337,6 +337,91 @@ fn version_expressions() -> Result<()> {
     Ok(())
 }
 
+// TODO: treat - as a unary operator
+// test!(precedence_unary_vs_exponentiation, "-2 ** 4", "-16");
+
+test!(
+    precedence_unary_vs_exponentiation_grouped,
+    "(-2) ** 4",
+    "16"
+);
+
+test!(
+    precedence_exponentiation_associativity,
+    "2 ** 3 ** 2",
+    "512"
+);
+test!(
+    precedence_exponentiation_associativity_grouped,
+    "(2 ** 3) ** 2",
+    "64"
+);
+
+test!(precedence_mixed_arithmetic, "10 + 5 * 2 ** 3 - 1", "49");
+
+test!(
+    precedence_logical_or_vs_and,
+    "true || false && false",
+    "true"
+);
+
+test!(precedence_ternary_is_lowest, "5 > 10 ? 1 + 1 : 2 * 2", "4");
+test!(
+    precedence_ternary_associativity,
+    "false ? 1 : true ? 2 : 3",
+    "2"
+);
+test!(
+    precedence_ternary_associativity_2,
+    "false ? 1 : false ? 2 : 3",
+    "3"
+);
+
+// TODO: implement type conversion functions
+// test!(precedence_pipe_is_low, r#""a" == "a" | string()"#, r#""true""#);
+
+test!(
+    precedence_string_op_vs_and,
+    r#""foo" contains "f" and "bar" startsWith "b""#,
+    "true"
+);
+
+test!(
+    precedence_string_op_vs_or,
+    r#""foo" endsWith "x" or "bar" contains "a""#,
+    "true"
+);
+
+test!(
+    precedence_in_op_vs_and,
+    r#"1 in [1, 2] and 3 in [3, 4]"#,
+    "true"
+);
+
+test!(
+    precedence_in_op_vs_or,
+    r#"1 in [2, 3] or 3 in [3, 4]"#,
+    "true"
+);
+
+test!(
+    precedence_matches_vs_and,
+    r#""foo123" matches "^1" and "123foo" matches "^1""#,
+    "false"
+);
+
+test!(
+    precedence_op_and_or_chain_1,
+    r#""a" == "b" or "c" == "c" and "d" == "f""#,
+    "false"
+);
+
+test!(
+    precedence_op_and_or_chain_2,
+    r#""a" startsWith "x" or "b" contains "b" and "c" endsWith "c""#,
+    "true"
+);
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
     #[test]
