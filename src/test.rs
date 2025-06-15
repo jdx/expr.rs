@@ -54,6 +54,10 @@ fn arithmetic() -> Result<()> {
     test_old!("1 != 2", "true");
     test_old!("1 != 1", "false");
     test_old!("(1 + 2) * 3", "9");
+    test_old!("+2 + 3", "5");
+    test_old!("+2.0 + 3.5", "5.5");
+    test_old!("-2 + 3", "1");
+    test_old!("-2.0 + 3.5", "1.5");
     Ok(())
 }
 
@@ -337,8 +341,7 @@ fn version_expressions() -> Result<()> {
     Ok(())
 }
 
-// TODO: treat - as a unary operator
-// test!(precedence_unary_vs_exponentiation, "-2 ** 4", "-16");
+test!(precedence_unary_vs_exponentiation, "-2 ** 4", "-16");
 
 test!(
     precedence_unary_vs_exponentiation_grouped,
