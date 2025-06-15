@@ -365,6 +365,12 @@ test!(
     "true"
 );
 
+test!(
+    precedence_not_vs_and,
+    "not true and true",
+    "false"
+);
+
 test!(precedence_ternary_is_lowest, "5 > 10 ? 1 + 1 : 2 * 2", "4");
 test!(
     precedence_ternary_associativity,
