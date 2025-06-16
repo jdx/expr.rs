@@ -2,11 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.2] - 2025-06-16
+
+### 🐛 Bug Fixes
+
+- Parse signs as unary operators (#17)
+
 ## [0.3.1] - 2025-06-15
 
 ### 🐛 Bug Fixes
 
 - Correct operator precedences to match with go implementation (#16)
+
+### ⚙️ Miscellaneous Tasks
+
+- Release expr-lang version 0.3.1
 
 ## [0.3.0] - 2025-03-18
 
