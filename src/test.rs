@@ -477,6 +477,17 @@ test!(len_string_empty, r#"len("")"#, "0");
 test!(len_map, r#"len({a: 1, b: 2})"#, "2");
 test!(len_map_empty, r#"len({})"#, "0");
 
+// sort tests
+test!(sort_numbers, r#"sort([3, 1, 4, 1, 5, 9, 2, 6])"#, "[1, 1, 2, 3, 4, 5, 6, 9]");
+test!(sort_numbers_desc, r#"sort([3, 1, 4, 1, 5], "desc")"#, "[5, 4, 3, 1, 1]");
+test!(sort_strings, r#"sort(["banana", "apple", "cherry"])"#, r#"["apple", "banana", "cherry"]"#);
+test!(sort_strings_desc, r#"sort(["b", "a", "c"], "desc")"#, r#"["c", "b", "a"]"#);
+test!(sort_empty, r#"sort([])"#, "[]");
+
+// sortBy tests
+test!(sort_by_length, r#"sortBy(["bb", "a", "ccc"], {len(#)})"#, r#"["a", "bb", "ccc"]"#);
+test!(sort_by_length_desc, r#"sortBy(["bb", "a", "ccc"], "desc", {len(#)})"#, r#"["ccc", "bb", "a"]"#);
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
     #[test]

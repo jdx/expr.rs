@@ -205,4 +205,70 @@ pub fn add_array_functions(env: &mut Environment) {
             bail!("groupBy() takes an array as the first argument and a predicate as the second argument");
         }
     });
+
+    env.add_function("sort", |c| {
+        if c.args.is_empty() || c.args.len() > 2 {
+            bail!("sort() takes one or two arguments");
+        }
+        let Value::Array(a) = &c.args[0] else {
+            bail!("sort() takes an array as the first argument");
+        };
+        let desc = if c.args.len() == 2 {
+            match &c.args[1] {
+                Value::String(s) if s == "desc" => true,
+                Value::String(s) if s == "asc" => false,
+                _ => bail!("sort() second argument must be \"asc\" or \"desc\""),
+            }
+        } else {
+            false
+        };
+        let mut result = a.clone();
+        result.sort_by(|a, b| {
+            let cmp = match (a, b) {
+                (Value::Number(a), Value::Number(b)) => a.cmp(b),
+                (Value::String(a), Value::String(b)) => a.cmp(b),
+                (a, b) => a.to_string().cmp(&b.to_string()),
+            };
+            if desc { cmp.reverse() } else { cmp }
+        });
+        Ok(result.into())
+    });
+
+    env.add_function("sortBy", |c| {
+        if c.args.is_empty() || c.args.len() > 2 {
+            bail!("sortBy() takes one or two arguments and a predicate");
+        }
+        let Value::Array(a) = &c.args[0] else {
+            bail!("sortBy() takes an array as the first argument");
+        };
+        let Some(predicate) = c.predicate else {
+            bail!("sortBy() requires a predicate");
+        };
+        let desc = if c.args.len() == 2 {
+            match &c.args[1] {
+                Value::String(s) if s == "desc" => true,
+                Value::String(s) if s == "asc" => false,
+                _ => bail!("sortBy() second argument must be \"asc\" or \"desc\""),
+            }
+        } else {
+            false
+        };
+        // Compute keys for each element
+        let mut keyed: Vec<(Value, Value)> = Vec::new();
+        for value in a {
+            let mut ctx = c.ctx.clone();
+            ctx.insert("#".to_string(), value.clone());
+            let key = c.env.run(predicate.clone(), &ctx)?;
+            keyed.push((key, value.clone()));
+        }
+        keyed.sort_by(|(a, _), (b, _)| {
+            let cmp = match (a, b) {
+                (Value::Number(a), Value::Number(b)) => a.cmp(b),
+                (Value::String(a), Value::String(b)) => a.cmp(b),
+                (a, b) => a.to_string().cmp(&b.to_string()),
+            };
+            if desc { cmp.reverse() } else { cmp }
+        });
+        Ok(keyed.into_iter().map(|(_, v)| v).collect::<Vec<_>>().into())
+    });
 }
