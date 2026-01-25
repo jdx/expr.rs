@@ -431,6 +431,44 @@ test!(
     "true"
 );
 
+// fromJSON tests
+test!(from_json_object, r#"fromJSON("{\"foo\": \"bar\"}")"#, "{{foo: \"bar\"}}");
+test!(from_json_object_access, r#"fromJSON("{\"foo\": \"bar\"}").foo"#, r#""bar""#);
+test!(from_json_array, r#"fromJSON("[1, 2, 3]")"#, "[1, 2, 3]");
+test!(from_json_number, r#"fromJSON("123")"#, "123");
+test!(from_json_float, r#"fromJSON("1.5")"#, "1.5");
+test!(from_json_true, r#"fromJSON("true")"#, "true");
+test!(from_json_false, r#"fromJSON("false")"#, "false");
+test!(from_json_null, r#"fromJSON("null")"#, "nil");
+test!(from_json_string, r#"fromJSON("\"hello\"")"#, r#""hello""#);
+test!(from_json_nested, r#"fromJSON("{\"a\": {\"b\": 1}}").a.b"#, "1");
+test!(from_json_array_access, r#"fromJSON("[1, 2, 3]")[1]"#, "2");
+
+// toJSON tests
+test!(to_json_array, r#"toJSON([1, 2, 3])"#, r#""[1,2,3]""#);
+test!(to_json_number, r#"toJSON(123)"#, r#""123""#);
+test!(to_json_float, r#"toJSON(1.5)"#, r#""1.5""#);
+test!(to_json_true, r#"toJSON(true)"#, r#""true""#);
+test!(to_json_false, r#"toJSON(false)"#, r#""false""#);
+test!(to_json_nil, r#"toJSON(nil)"#, r#""null""#);
+
+// keys tests
+test!(keys_map, r#"keys({foo: 1, bar: 2})"#, r#"["foo", "bar"]"#);
+test!(keys_empty, r#"keys({})"#, "[]");
+test!(keys_single, r#"keys({a: 1})"#, r#"["a"]"#);
+
+// values tests
+test!(values_map, r#"values({foo: 1, bar: 2})"#, "[1, 2]");
+test!(values_empty, r#"values({})"#, "[]");
+
+// len tests
+test!(len_array, r#"len([1, 2, 3])"#, "3");
+test!(len_array_empty, r#"len([])"#, "0");
+test!(len_string, r#"len("hello")"#, "5");
+test!(len_string_empty, r#"len("")"#, "0");
+test!(len_map, r#"len({a: 1, b: 2})"#, "2");
+test!(len_map_empty, r#"len({})"#, "0");
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
     #[test]
