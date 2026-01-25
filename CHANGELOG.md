@@ -1,3 +1,14 @@
+# Changelog
+
+
+### Bug Fixes
+
+- Enable preserve_order for serde_json ([#20](https://github.com/jdx/expr.rs/pull/20))
+
+### Miscellaneous
+
+- Adopt release-plz for automated releases ([#21](https://github.com/jdx/expr.rs/pull/21))
+
 ## [0.4.0] - 2026-01-25
 
 ### 🚀 Features
