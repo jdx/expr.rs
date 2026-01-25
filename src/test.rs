@@ -496,3 +496,6 @@ proptest! {
         check!(format!("{a} + {b}"), "{sum}").unwrap()
     }
 }
+
+// pipe tests
+test!(pipe_sort, r#"[3, 1, 2] | sort()"#, "[1, 2, 3]");
