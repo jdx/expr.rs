@@ -457,6 +457,14 @@ test!(keys_map, r#"keys({foo: 1, bar: 2})"#, r#"["foo", "bar"]"#);
 test!(keys_empty, r#"keys({})"#, "[]");
 test!(keys_single, r#"keys({a: 1})"#, r#"["a"]"#);
 
+// Test that JSON keys preserve insertion order (not alphabetical)
+// This is critical for version lists where "0.40.0" should come after "0.39.0", not before "0.5.0"
+test!(
+    keys_preserve_insertion_order,
+    r#"keys(fromJSON("{\"z\": 1, \"a\": 2, \"m\": 3}"))"#,
+    r#"["z", "a", "m"]"#
+);
+
 // values tests
 test!(values_map, r#"values({foo: 1, bar: 2})"#, "[1, 2]");
 test!(values_empty, r#"values({})"#, "[]");
