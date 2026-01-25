@@ -1,0 +1,9 @@
+[workspace]
+# Use conventional commits for changelog
+changelog_config = "cliff.toml"
+
+[[package]]
+name = "expr-lang"
+# Create GitHub releases
+publish = true
+git_release_enable = true
