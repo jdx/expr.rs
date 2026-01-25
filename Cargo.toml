@@ -35,6 +35,3 @@ once_cell = "1"
 test-log = "0.2"
 proptest = "1"
 serde = "1"
-
-[package.metadata.release]
-pre-release-hook = ["git", "cliff", "-o", "CHANGELOG.md", "--tag", "{{version}}"]
