@@ -1,3 +1,10 @@
+# Changelog
+
+
+### Bug Fixes
+
+- Support braceless predicates matching Go expr-lang behavior ([#23](https://github.com/jdx/expr.rs/pull/23))
+
 ## [0.4.0] - 2026-01-25
 
 ### 🚀 Features
