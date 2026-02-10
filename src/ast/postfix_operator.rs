@@ -15,6 +15,21 @@ pub enum PostfixOperator {
     Ternary { left: Box<Node>, right: Box<Node> },
 }
 
+impl PostfixOperator {
+    pub(crate) fn contains_hash_ident(&self) -> bool {
+        match self {
+            PostfixOperator::Index { idx, .. } => idx.contains_hash_ident(),
+            PostfixOperator::Default(node) | PostfixOperator::Pipe(node) => {
+                node.contains_hash_ident()
+            }
+            PostfixOperator::Ternary { left, right } => {
+                left.contains_hash_ident() || right.contains_hash_ident()
+            }
+            PostfixOperator::Range(..) => false,
+        }
+    }
+}
+
 impl From<Pair<'_, Rule>> for PostfixOperator {
     fn from(pair: Pair<Rule>) -> Self {
         trace!("{:?}={}", pair.as_rule(), pair.as_str());

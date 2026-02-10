@@ -308,6 +308,11 @@ fn filter() -> Result<()> {
     test_old!("filter(0..9, # % 2 == 0)", "[0, 2, 4, 6, 8]");
     test_old!("filter([1, 2, 3], # > 1)", "[2, 3]");
     test_old!("map([1, 2, 3], # * 2)", "[2, 4, 6]");
+    // Pipe + braceless predicate
+    test_old!("[1, 2, 3, 4, 5] | filter(# > 2)", "[3, 4, 5]");
+    test_old!("[1, 2, 3] | map(# * 10)", "[10, 20, 30]");
+    // Nested func with # inside braced predicate should not be affected
+    test_old!("filter([\"ab\", \"cde\", \"f\"], {len(#) > 1})", r#"["ab", "cde"]"#);
     Ok(())
 }
 

@@ -32,13 +32,16 @@ pub enum Node {
 
 impl Node {
     /// Check if this node or any of its children reference the `#` variable
-    fn contains_hash_ident(&self) -> bool {
+    pub(crate) fn contains_hash_ident(&self) -> bool {
         match self {
             Node::Ident(id) => id == "#",
             Node::Operation { left, right, .. } => {
                 left.contains_hash_ident() || right.contains_hash_ident()
             }
-            Node::Unary { node, .. } | Node::Postfix { node, .. } => node.contains_hash_ident(),
+            Node::Unary { node, .. } => node.contains_hash_ident(),
+            Node::Postfix { node, operator } => {
+                node.contains_hash_ident() || operator.contains_hash_ident()
+            }
             Node::Func { args, predicate, .. } => {
                 args.iter().any(|a| a.contains_hash_ident())
                     || predicate
@@ -49,6 +52,17 @@ impl Node {
             Node::Range(a, b) => a.contains_hash_ident() || b.contains_hash_ident(),
             Node::Value(_) => false,
         }
+    }
+
+    /// Functions that accept predicates (closures over `#`).
+    /// Matches Go expr-lang's hardcoded predicates map in parser.go.
+    fn accepts_predicate(name: &str) -> bool {
+        matches!(
+            name,
+            "all" | "any" | "one" | "none" | "map" | "filter" | "find"
+                | "findIndex" | "findLast" | "findLastIndex"
+                | "count" | "sum" | "reduce" | "groupBy" | "sortBy"
+        )
     }
 }
 
@@ -104,16 +118,19 @@ impl From<Pair<'_, Rule>> for Node {
                 // If no explicit predicate was parsed but the last arg references `#`,
                 // promote it to the predicate. This matches Go expr-lang behavior where
                 // `filter(arr, # > 2)` works without braces around the predicate.
-                if predicate.is_none() && args.len() >= 2 {
-                    if let Some(last) = args.last() {
-                        if last.contains_hash_ident() {
-                            let last = args.pop().unwrap();
-                            predicate = Some(Box::new(Program {
-                                lines: Vec::new(),
-                                expr: last,
-                            }));
-                        }
-                    }
+                // Only applies to known predicate-accepting functions to avoid breaking
+                // nested calls like `indexOf("abc", #)` inside braced predicates.
+                // Uses >= 1 (not >= 2) so pipe syntax works: `arr | filter(# > 2)`.
+                if predicate.is_none()
+                    && !args.is_empty()
+                    && Self::accepts_predicate(&ident)
+                    && args.last().unwrap().contains_hash_ident()
+                {
+                    let last = args.pop().unwrap();
+                    predicate = Some(Box::new(Program {
+                        lines: Vec::new(),
+                        expr: last,
+                    }));
                 }
                 Node::Func { ident, args, predicate }
             },
