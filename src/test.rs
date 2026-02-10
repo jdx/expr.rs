@@ -313,6 +313,8 @@ fn filter() -> Result<()> {
     test_old!("[1, 2, 3] | map(# * 10)", "[10, 20, 30]");
     // Nested func with # inside braced predicate should not be affected
     test_old!("filter([\"ab\", \"cde\", \"f\"], {len(#) > 1})", r#"["ab", "cde"]"#);
+    // Bound # in nested predicate should not trigger outer promotion
+    test_old!("map([1, 2, 3], {any(0..9, {# > 0})})", "[true, true, true]");
     Ok(())
 }
 

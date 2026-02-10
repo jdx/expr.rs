@@ -42,11 +42,10 @@ impl Node {
             Node::Postfix { node, operator } => {
                 node.contains_hash_ident() || operator.contains_hash_ident()
             }
-            Node::Func { args, predicate, .. } => {
+            Node::Func { args, .. } => {
+                // Only check args, not predicate — `#` inside a predicate is bound
+                // to that function's iteration, not free for outer promotion.
                 args.iter().any(|a| a.contains_hash_ident())
-                    || predicate
-                        .as_ref()
-                        .map_or(false, |p| p.expr.contains_hash_ident())
             }
             Node::Array(items) => items.iter().any(|i| i.contains_hash_ident()),
             Node::Range(a, b) => a.contains_hash_ident() || b.contains_hash_ident(),
