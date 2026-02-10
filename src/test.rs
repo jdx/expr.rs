@@ -304,6 +304,10 @@ fn range() -> Result<()> {
 #[test]
 fn filter() -> Result<()> {
     test_old!("filter(0..9, {# % 2 == 0})", "[0, 2, 4, 6, 8]");
+    // Without braces (Go expr-lang compatible)
+    test_old!("filter(0..9, # % 2 == 0)", "[0, 2, 4, 6, 8]");
+    test_old!("filter([1, 2, 3], # > 1)", "[2, 3]");
+    test_old!("map([1, 2, 3], # * 2)", "[2, 4, 6]");
     Ok(())
 }
 

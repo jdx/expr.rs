@@ -30,6 +30,28 @@ pub enum Node {
     },
 }
 
+impl Node {
+    /// Check if this node or any of its children reference the `#` variable
+    fn contains_hash_ident(&self) -> bool {
+        match self {
+            Node::Ident(id) => id == "#",
+            Node::Operation { left, right, .. } => {
+                left.contains_hash_ident() || right.contains_hash_ident()
+            }
+            Node::Unary { node, .. } | Node::Postfix { node, .. } => node.contains_hash_ident(),
+            Node::Func { args, predicate, .. } => {
+                args.iter().any(|a| a.contains_hash_ident())
+                    || predicate
+                        .as_ref()
+                        .map_or(false, |p| p.expr.contains_hash_ident())
+            }
+            Node::Array(items) => items.iter().any(|i| i.contains_hash_ident()),
+            Node::Range(a, b) => a.contains_hash_ident() || b.contains_hash_ident(),
+            Node::Value(_) => false,
+        }
+    }
+}
+
 impl Default for Node {
     fn default() -> Self {
         Node::Value(Value::default())
@@ -68,7 +90,7 @@ impl From<Pair<'_, Rule>> for Node {
                 let mut inner = pair.into_inner();
                 let ident = inner.next().unwrap().as_str().to_string();
                 let mut predicate = None;
-                let mut args = Vec::new();
+                let mut args: Vec<Node> = Vec::new();
                 for arg in inner {
                     match arg.as_rule() {
                         Rule::predicate => {
@@ -77,6 +99,20 @@ impl From<Pair<'_, Rule>> for Node {
                         _ => {
                             args.push(arg.into());
                         },
+                    }
+                }
+                // If no explicit predicate was parsed but the last arg references `#`,
+                // promote it to the predicate. This matches Go expr-lang behavior where
+                // `filter(arr, # > 2)` works without braces around the predicate.
+                if predicate.is_none() && args.len() >= 2 {
+                    if let Some(last) = args.last() {
+                        if last.contains_hash_ident() {
+                            let last = args.pop().unwrap();
+                            predicate = Some(Box::new(Program {
+                                lines: Vec::new(),
+                                expr: last,
+                            }));
+                        }
                     }
                 }
                 Node::Func { ident, args, predicate }
