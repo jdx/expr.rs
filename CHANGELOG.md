@@ -5,6 +5,11 @@
 
 - Support braceless predicates matching Go expr-lang behavior ([#23](https://github.com/jdx/expr.rs/pull/23))
 
+### Miscellaneous
+
+- Release v1.1.1 ([#22](https://github.com/jdx/expr.rs/pull/22))
+
+
 ## [0.4.0] - 2026-01-25
 
 ### 🚀 Features
