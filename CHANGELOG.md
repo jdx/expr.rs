@@ -4,6 +4,13 @@
 ### Bug Fixes
 
 - Support braceless predicates matching Go expr-lang behavior ([#23](https://github.com/jdx/expr.rs/pull/23))
+# Changelog
+
+
+### Bug Fixes
+
+- *(deps)* Update rust crate strum to 0.28 ([#34](https://github.com/jdx/expr.rs/pull/34))
+
 
 ## [0.4.0] - 2026-01-25
 
