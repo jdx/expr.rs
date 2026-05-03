@@ -4,6 +4,22 @@
 ### Bug Fixes
 
 - Support braceless predicates matching Go expr-lang behavior ([#23](https://github.com/jdx/expr.rs/pull/23))
+# Changelog
+
+
+### Bug Fixes
+
+- *(deps)* Update rust crate strum to 0.28 ([#34](https://github.com/jdx/expr.rs/pull/34))
+
+### Miscellaneous
+
+- *(deps)* Lock file maintenance ([#37](https://github.com/jdx/expr.rs/pull/37))
+- *(deps)* Update rust crate indexmap to v2.14.0 ([#38](https://github.com/jdx/expr.rs/pull/38))
+- *(deps)* Lock file maintenance ([#39](https://github.com/jdx/expr.rs/pull/39))
+- *(deps)* Lock file maintenance ([#40](https://github.com/jdx/expr.rs/pull/40))
+- *(deps)* Lock file maintenance ([#41](https://github.com/jdx/expr.rs/pull/41))
+- Set dev profile debug to 1 ([#42](https://github.com/jdx/expr.rs/pull/42))
+
 
 ## [0.4.0] - 2026-01-25
 
