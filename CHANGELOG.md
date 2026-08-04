@@ -4,6 +4,35 @@
 ### Bug Fixes
 
 - Support braceless predicates matching Go expr-lang behavior ([#23](https://github.com/jdx/expr.rs/pull/23))
+# Changelog
+
+
+### Bug Fixes
+
+- *(deps)* Update rust crate strum to 0.28 ([#34](https://github.com/jdx/expr.rs/pull/34))
+
+### Miscellaneous
+
+- *(deps)* Lock file maintenance ([#37](https://github.com/jdx/expr.rs/pull/37))
+- *(deps)* Update rust crate indexmap to v2.14.0 ([#38](https://github.com/jdx/expr.rs/pull/38))
+- *(deps)* Lock file maintenance ([#39](https://github.com/jdx/expr.rs/pull/39))
+- *(deps)* Lock file maintenance ([#40](https://github.com/jdx/expr.rs/pull/40))
+- *(deps)* Lock file maintenance ([#41](https://github.com/jdx/expr.rs/pull/41))
+- Set dev profile debug to 1 ([#42](https://github.com/jdx/expr.rs/pull/42))
+- *(deps)* Lock file maintenance ([#44](https://github.com/jdx/expr.rs/pull/44))
+- *(deps)* Lock file maintenance ([#45](https://github.com/jdx/expr.rs/pull/45))
+- *(deps)* Lock file maintenance ([#46](https://github.com/jdx/expr.rs/pull/46))
+- *(deps)* Lock file maintenance lockfile maintenance ([#49](https://github.com/jdx/expr.rs/pull/49))
+- *(deps)* Lock file maintenance lockfile maintenance ([#51](https://github.com/jdx/expr.rs/pull/51))
+- *(deps)* Lock file maintenance lockfile maintenance ([#53](https://github.com/jdx/expr.rs/pull/53))
+- *(deps)* Lock file maintenance ([#55](https://github.com/jdx/expr.rs/pull/55))
+- *(deps)* Lock file maintenance ([#56](https://github.com/jdx/expr.rs/pull/56))
+- *(deps)* Update rust crate regex to v1.13.1 ([#60](https://github.com/jdx/expr.rs/pull/60))
+- *(deps)* Update rust crate serde_json to v1.0.151 ([#64](https://github.com/jdx/expr.rs/pull/64))
+- *(deps)* Update rust crate thiserror to v2.0.19 ([#65](https://github.com/jdx/expr.rs/pull/65))
+- *(deps)* Update rust crate serde to v1.0.229 ([#63](https://github.com/jdx/expr.rs/pull/63))
+- *(deps)* Update rust crate pest_derive to v2.8.8 ([#67](https://github.com/jdx/expr.rs/pull/67))
+
 
 ## [0.4.0] - 2026-01-25
 
