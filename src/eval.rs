@@ -1,8 +1,8 @@
 use crate::ast::node::Node;
 use crate::ast::program::Program;
-use crate::functions::{array, json, string, ExprCall, Function};
-use crate::{bail, Context, Result, Value};
+use crate::functions::{ExprCall, Function, array, convert, json, string};
 use crate::parser::compile;
+use crate::{Context, Result, Value, bail};
 use indexmap::IndexMap;
 use once_cell::sync::Lazy;
 use std::fmt;
@@ -66,6 +66,7 @@ impl<'a> Environment<'a> {
         };
         string::add_string_functions(&mut p);
         array::add_array_functions(&mut p);
+        convert::add_conversion_functions(&mut p);
         json::add_json_functions(&mut p);
         p
     }
