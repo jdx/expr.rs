@@ -1,15 +1,16 @@
 use crate::ast::node::Node;
 use crate::ast::program::Program;
-use crate::functions::{ExprCall, Function, array, bitwise, convert, json, string};
+use crate::context::ContextScope;
+use crate::functions::{array, bitwise, convert, json, string, ExprCall, Function};
 use crate::parser::compile;
-use crate::{Context, Result, Value, bail};
+use crate::{bail, ContextProvider, Result, Value};
 use indexmap::IndexMap;
 use once_cell::sync::Lazy;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 
 /// Run a compiled expr program, using the default environment
-pub fn run(program: Program, ctx: &Context) -> Result<Value> {
+pub fn run(program: Program, ctx: &dyn ContextProvider) -> Result<Value> {
     DEFAULT_ENVIRONMENT.run(program, ctx)
 }
 
@@ -21,7 +22,7 @@ pub fn run(program: Program, ctx: &Context) -> Result<Value> {
 /// let ctx = Context::default();
 /// assert_eq!(eval("1 + 2", &ctx).unwrap().to_string(), "3");
 /// ```
-pub fn eval(code: &str, ctx: &Context) -> Result<Value> {
+pub fn eval(code: &str, ctx: &dyn ContextProvider) -> Result<Value> {
     DEFAULT_ENVIRONMENT.eval(code, ctx)
 }
 
@@ -47,7 +48,6 @@ pub fn eval(code: &str, ctx: &Context) -> Result<Value> {
 /// });
 /// assert_eq!(env.eval("add(1, 2, 3)", &ctx).unwrap().to_string(), "6");
 /// ```
-#[derive(Default)]
 pub struct Environment<'a> {
     pub(crate) functions: IndexMap<String, Function<'a>>,
 }
@@ -55,6 +55,12 @@ pub struct Environment<'a> {
 impl Debug for Environment<'_> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.debug_struct("ExprEnvironment").finish()
+    }
+}
+
+impl Default for Environment<'_> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -100,13 +106,24 @@ impl<'a> Environment<'a> {
     }
 
     /// Run a compiled expr program
-    pub fn run(&self, program: Program, ctx: &Context) -> Result<Value> {
-        let mut ctx = ctx.clone();
-        ctx.insert("$env".to_string(), Value::Map(ctx.0.clone()));
+    pub fn run(&self, program: Program, ctx: &dyn ContextProvider) -> Result<Value> {
+        let mut ctx = ContextScope::new(ctx);
         for (id, expr) in program.lines {
             ctx.insert(id, self.eval_expr(&ctx, expr)?);
         }
         self.eval_expr(&ctx, program.expr)
+    }
+
+    pub(crate) fn run_with_binding(
+        &self,
+        program: Program,
+        ctx: &dyn ContextProvider,
+        key: &str,
+        value: Value,
+    ) -> Result<Value> {
+        let mut scope = ContextScope::new(ctx);
+        scope.insert(key, value);
+        self.run(program, &scope)
     }
 
     /// Compile and run an expr program in one step
@@ -119,16 +136,18 @@ impl<'a> Environment<'a> {
     /// let ctx = Context::default();
     /// assert_eq!(env.eval("1 + 2", &ctx).unwrap().to_string(), "3");
     /// ```
-    pub fn eval(&self, code: &str, ctx: &Context) -> Result<Value> {
+    pub fn eval(&self, code: &str, ctx: &dyn ContextProvider) -> Result<Value> {
         let program = compile(code)?;
         self.run(program, ctx)
     }
 
-    pub fn eval_expr(&self, ctx: &Context, node: Node) -> Result<Value> {
+    pub fn eval_expr(&self, ctx: &dyn ContextProvider, node: Node) -> Result<Value> {
         let value = match node {
             Node::Value(value) => value,
             Node::Ident(id) => {
-                if let Some(value) = ctx.get(&id) {
+                if id == "$env" {
+                    Value::Map(ctx.environment().0)
+                } else if let Some(value) = ctx.get(&id) {
                     value.clone()
                 } else if let Some(item) = ctx
                     .get("#")
@@ -150,7 +169,7 @@ impl<'a> Environment<'a> {
                     .map(|e| self.eval_expr(ctx, e))
                     .collect::<Result<_>>()?;
                 self.eval_func(ctx, ident, args, predicate.map(|l| *l))?
-            },
+            }
             Node::Operation {
                 left,
                 operator,
@@ -163,17 +182,17 @@ impl<'a> Environment<'a> {
                     .map(|e| self.eval_expr(ctx, e))
                     .collect::<Result<_>>()?,
             ), // node => bail!("unexpected node: {node:?}"),
-            Node::Range(start, end) => match (self.eval_expr(ctx, *start)?, self.eval_expr(ctx, *end)?) {
-                (Value::Integer(start), Value::Integer(end)) => {
-                    Value::Array((start..=end).map(Value::Integer).collect())
+            Node::Range(start, end) => {
+                match (self.eval_expr(ctx, *start)?, self.eval_expr(ctx, *end)?) {
+                    (Value::Integer(start), Value::Integer(end)) => {
+                        Value::Array((start..=end).map(Value::Integer).collect())
+                    }
+                    (start, end) => bail!("invalid range: {start:?}..{end:?}"),
                 }
-                (start, end) => bail!("invalid range: {start:?}..{end:?}"),
             }
         };
         Ok(value)
     }
 }
 
-pub(crate) static DEFAULT_ENVIRONMENT: Lazy<Environment> = Lazy::new(|| {
-    Environment::new()
-});
+pub(crate) static DEFAULT_ENVIRONMENT: Lazy<Environment> = Lazy::new(Environment::new);

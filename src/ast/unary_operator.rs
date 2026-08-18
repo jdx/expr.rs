@@ -2,7 +2,7 @@ use crate::ast::node::Node;
 use crate::Rule;
 use crate::Value::Bool;
 use crate::{bail, Result};
-use crate::{Context, Environment, Value};
+use crate::{ContextProvider, Environment, Value};
 use log::trace;
 use pest::iterators::Pair;
 use std::str::FromStr;
@@ -31,7 +31,7 @@ impl From<Pair<'_, Rule>> for UnaryOperator {
 impl Environment<'_> {
     pub fn eval_unary_operator(
         &self,
-        ctx: &Context,
+        ctx: &dyn ContextProvider,
         operator: UnaryOperator,
         node: Node,
     ) -> Result<Value> {
