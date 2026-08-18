@@ -26,7 +26,7 @@ This is a Rust implementation of the [expr](https://expr-lang.org/) expression l
 
 ### Key Types
 
-- **`Value`** (`src/value.rs`): Runtime values - Number(i64), Float(f64), Bool, String, Array, Map, Nil
+- **`Value`** (`src/value.rs`): Runtime values - Integer(i64), Float(f64), Bool, String, Array, Map, Nil
 - **`Context`**: HashMap-like container for variable bindings passed to evaluation
 - **`Environment`**: Holds custom function definitions; use `Environment::new()` for built-in functions
 - **`Program`**: Compiled AST from `compile()`, can be reused for multiple evaluations

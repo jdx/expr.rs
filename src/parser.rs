@@ -60,7 +60,7 @@ impl<'a> Parser<'a> {
     /// p.add_function("add", |c| {
     ///   let mut sum = 0;
     ///     for arg in c.args {
-    ///       if let Value::Number(n) = arg {
+    ///       if let Value::Integer(n) = arg {
     ///         sum += n;
     ///        } else {
     ///          panic!("Invalid argument: {arg:?}");

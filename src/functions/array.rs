@@ -144,7 +144,7 @@ pub fn add_array_functions(env: &mut Environment) {
                     return Ok(i.into());
                 }
             }
-            Ok(Value::Number(-1))
+            Ok(Value::Integer(-1))
         } else {
             bail!("findIndex() takes an array as the first argument");
         }
@@ -180,7 +180,7 @@ pub fn add_array_functions(env: &mut Environment) {
                     return Ok(i.into());
                 }
             }
-            Ok(Value::Number(-1))
+            Ok(Value::Integer(-1))
         } else {
             bail!("findLastIndex() takes an array as the first argument");
         }
@@ -225,7 +225,7 @@ pub fn add_array_functions(env: &mut Environment) {
         let mut result = a.clone();
         result.sort_by(|a, b| {
             let cmp = match (a, b) {
-                (Value::Number(a), Value::Number(b)) => a.cmp(b),
+                (Value::Integer(a), Value::Integer(b)) => a.cmp(b),
                 (Value::String(a), Value::String(b)) => a.cmp(b),
                 (a, b) => a.to_string().cmp(&b.to_string()),
             };
@@ -263,7 +263,7 @@ pub fn add_array_functions(env: &mut Environment) {
         }
         keyed.sort_by(|(a, _), (b, _)| {
             let cmp = match (a, b) {
-                (Value::Number(a), Value::Number(b)) => a.cmp(b),
+                (Value::Integer(a), Value::Integer(b)) => a.cmp(b),
                 (Value::String(a), Value::String(b)) => a.cmp(b),
                 (a, b) => a.to_string().cmp(&b.to_string()),
             };

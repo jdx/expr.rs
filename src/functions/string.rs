@@ -55,7 +55,7 @@ pub fn add_string_functions(env: &mut Environment) {
     env.add_function("split", |c| {
         if let (Value::String(s), Value::String(sep), None) = (&c.args[0], &c.args[1], c.args.get(2)) {
             Ok(s.split(sep).map(Value::from).collect::<Vec<_>>().into())
-        } else if let (Value::String(s), Value::String(sep), Some(Value::Number(n))) = (&c.args[0], &c.args[1], c.args.get(2)) {
+        } else if let (Value::String(s), Value::String(sep), Some(Value::Integer(n))) = (&c.args[0], &c.args[1], c.args.get(2)) {
             Ok(s.splitn(*n as usize, sep).map(Value::from).collect::<Vec<_>>().into())
         } else {
             bail!("split() takes a string as the first argument and a string as the second argument");
@@ -65,7 +65,7 @@ pub fn add_string_functions(env: &mut Environment) {
     env.add_function("splitAfter", |c| {
         if let (Value::String(s), Value::String(sep), None) = (&c.args[0], &c.args[1], c.args.get(2)) {
             Ok(s.split_inclusive(sep).map(Value::from).collect::<Vec<_>>().into())
-        } else if let (Value::String(s), Value::String(sep), Some(Value::Number(n))) = (&c.args[0], &c.args[1], c.args.get(2)) {
+        } else if let (Value::String(s), Value::String(sep), Some(Value::Integer(n))) = (&c.args[0], &c.args[1], c.args.get(2)) {
             let mut arr = s.split_inclusive(sep).take(*n as usize - 1).map(|s| s.to_string()).collect::<Vec<_>>();
             arr.push(s.split_inclusive(sep).skip(*n as usize - 1).collect::<Vec<_>>().join(""));
             Ok(arr.into())
@@ -85,7 +85,7 @@ pub fn add_string_functions(env: &mut Environment) {
     });
 
     env.add_function("repeat", |c| {
-        if let (Value::String(s), Value::Number(n)) = (&c.args[0], &c.args[1]) {
+        if let (Value::String(s), Value::Integer(n)) = (&c.args[0], &c.args[1]) {
             Ok(s.repeat(*n as usize + 1).into())
         } else {
             bail!("repeat() takes a string as the first argument and a number as the second argument");
