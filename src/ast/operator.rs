@@ -131,22 +131,24 @@ impl Environment<'_> {
         let right = self.eval_expr(ctx, right)?;
         let result = match operator {
             Operator::Add => match (left, right) {
-                (Integer(left), Integer(right)) => (left + right).into(),
+                (Integer(left), Integer(right)) => left.wrapping_add(right).into(),
                 (Float(left), Float(right)) => (left + right).into(),
                 (Integer(left), Float(right)) => Float(left as f64 + right),
                 (Float(left), Integer(right)) => Float(left + right as f64),
                 (String(left), String(right)) => format!("{left}{right}").into(),
                 (DateTime(left), Duration(right)) => {
-                    DateTime(left + chrono::Duration::nanoseconds(right))
+                    DateTime(left.checked_add_signed(chrono::Duration::nanoseconds(right))
+                        .ok_or_else(|| crate::Error::ExprError("date out of range".into()))?)
                 }
                 (Duration(left), DateTime(right)) => {
-                    DateTime(right + chrono::Duration::nanoseconds(left))
+                    DateTime(right.checked_add_signed(chrono::Duration::nanoseconds(left))
+                        .ok_or_else(|| crate::Error::ExprError("date out of range".into()))?)
                 }
-                (Duration(left), Duration(right)) => Duration(left + right),
+                (Duration(left), Duration(right)) => Duration(left.wrapping_add(right)),
                 _ => bail!("Invalid operands for operator +"),
             },
             Operator::Subtract => match (left, right) {
-                (Integer(left), Integer(right)) => Integer(left - right),
+                (Integer(left), Integer(right)) => Integer(left.wrapping_sub(right)),
                 (Float(left), Float(right)) => Float(left - right),
                 (Integer(left), Float(right)) => Float(left as f64 - right),
                 (Float(left), Integer(right)) => Float(left - right as f64),
@@ -156,38 +158,35 @@ impl Environment<'_> {
                         .ok_or_else(|| crate::Error::ExprError("duration out of range".into()))?,
                 ),
                 (DateTime(left), Duration(right)) => {
-                    DateTime(left - chrono::Duration::nanoseconds(right))
+                    DateTime(left.checked_sub_signed(chrono::Duration::nanoseconds(right))
+                        .ok_or_else(|| crate::Error::ExprError("date out of range".into()))?)
                 }
-                (Duration(left), Duration(right)) => Duration(left - right),
+                (Duration(left), Duration(right)) => Duration(left.wrapping_sub(right)),
                 _ => bail!("Invalid operands for operator -"),
             },
             Operator::Multiply => match (left, right) {
-                (Integer(left), Integer(right)) => Integer(left * right),
+                (Integer(left), Integer(right)) => Integer(left.wrapping_mul(right)),
                 (Float(left), Float(right)) => Float(left * right),
                 (Integer(left), Float(right)) => Float(left as f64 * right),
                 (Float(left), Integer(right)) => Float(left * right as f64),
-                (Duration(left), Integer(right)) => Duration(left * right),
-                (Duration(left), Float(right)) => Float(left as f64 * right),
-                (Integer(left), Duration(right)) => Float(left as f64 * right as f64),
-                (Float(left), Duration(right)) => Float(left * right as f64),
+                (Duration(left), Integer(right)) => Duration(left.wrapping_mul(right)),
+                (Integer(left), Duration(right)) => Duration(left.wrapping_mul(right)),
                 _ => bail!("Invalid operands for operator *"),
             },
             Operator::Divide => match (left, right) {
-                (Integer(left), Integer(right)) => Integer(left / right),
+                (Integer(left), Integer(right)) => Float(left as f64 / right as f64),
                 (Float(left), Float(right)) => Float(left / right),
                 (Integer(left), Float(right)) => Float(left as f64 / right),
                 (Float(left), Integer(right)) => Float(left / right as f64),
-                (Duration(left), Integer(right)) => Float(left as f64 / right as f64),
-                (Duration(left), Float(right)) => Float(left as f64 / right),
-                (Duration(left), Duration(right)) => Float(left as f64 / right as f64),
                 _ => bail!("Invalid operands for operator /"),
             },
             Operator::Modulo => match (left, right) {
-                (Integer(left), Integer(right)) => Integer(left % right),
+                (Integer(_), Integer(0)) => bail!("integer divide by zero"),
+                (Integer(left), Integer(right)) => Integer(left.wrapping_rem(right)),
                 _ => bail!("Invalid operands for operator %"),
             },
             Operator::Pow => match (left, right) {
-                (Integer(left), Integer(right)) => Integer(left.pow(right as u32)),
+                (Integer(left), Integer(right)) => Float((left as f64).powf(right as f64)),
                 (Float(left), Float(right)) => Float(left.powf(right)),
                 (Integer(left), Float(right)) => Float((left as f64).powf(right)),
                 (Float(left), Integer(right)) => Float(left.powf(right as f64)),

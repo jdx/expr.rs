@@ -16,4 +16,8 @@ date("2023-08-14").Month() == 8
 date("2023-08-14").Weekday() == 1
 date("2023-08-14").Month() >= 6
 date("2023-08-14").Month() < date("2023-09-14").Month()
+1 % 0
+duration("1h") / 2
+duration("1h") / duration("30m")
+-duration("1h")
 duration("1h").Seconds(1)
