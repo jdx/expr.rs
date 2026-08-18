@@ -1,7 +1,7 @@
 use crate::ast::node::Node;
 use crate::ast::program::Program;
 use crate::context::ContextScope;
-use crate::functions::{array, bitwise, convert, json, string, ExprCall, Function};
+use crate::functions::{array, bitwise, convert, json, misc, number, string, ExprCall, Function};
 use crate::parser::compile;
 use crate::{bail, ContextProvider, Result, Value};
 use indexmap::IndexMap;
@@ -75,6 +75,8 @@ impl<'a> Environment<'a> {
         bitwise::add_bitwise_functions(&mut p);
         convert::add_conversion_functions(&mut p);
         json::add_json_functions(&mut p);
+        misc::add_misc_functions(&mut p);
+        number::add_number_functions(&mut p);
         p
     }
 
