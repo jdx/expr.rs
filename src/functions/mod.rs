@@ -14,7 +14,7 @@ pub type Function<'a> = Box<dyn Fn(ExprCall) -> Result<Value> + 'a + Sync + Send
 pub struct ExprCall<'a, 'b> {
     pub ident: String,
     pub args: Vec<Value>,
-    pub predicate: Option<Program>,
+    pub predicate: Option<&'a Program>,
     pub ctx: &'a dyn ContextProvider,
     pub env: &'a Environment<'b>,
 }
@@ -23,12 +23,12 @@ impl Environment<'_> {
     pub fn eval_func(
         &self,
         ctx: &dyn ContextProvider,
-        ident: String,
+        ident: &str,
         args: Vec<Value>,
-        predicate: Option<Program>,
+        predicate: Option<&Program>,
     ) -> Result<Value> {
         let call = ExprCall {
-            ident,
+            ident: ident.to_string(),
             args,
             predicate,
             ctx,
