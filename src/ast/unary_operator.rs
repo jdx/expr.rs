@@ -42,12 +42,12 @@ impl Environment<'_> {
                 _ => bail!("Invalid operand for operator !"),
             },
             UnaryOperator::Positive => match node {
-                Value::Number(n) => Value::Number(n),
+                Value::Integer(n) => Value::Integer(n),
                 Value::Float(f) => Value::Float(f),
                 _ => bail!("Invalid operand for operator +"),
             },
             UnaryOperator::Negative => match node {
-                Value::Number(n) => Value::Number(-n),
+                Value::Integer(n) => Value::Integer(-n),
                 Value::Float(f) => Value::Float(-f),
                 _ => bail!("Invalid operand for operator -"),
             },

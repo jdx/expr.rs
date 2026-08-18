@@ -295,7 +295,7 @@ mod tests {
     #[test]
     fn test_value_macro_numeric() {
         let integer_val = value!(42);
-        assert_eq!(integer_val, Value::Number(42));
+        assert_eq!(integer_val, Value::Integer(42));
 
         let float_val = value!(3.14);
         assert_eq!(float_val, Value::Float(3.14));
@@ -313,9 +313,9 @@ mod tests {
         assert_eq!(
             simple_array,
             Value::Array(vec![
-                Value::Number(1),
-                Value::Number(2),
-                Value::Number(3),
+                Value::Integer(1),
+                Value::Integer(2),
+                Value::Integer(3),
             ])
         );
 
@@ -334,7 +334,7 @@ mod tests {
         assert_eq!(
             nested_array,
             Value::Array(vec![
-                Value::Array(vec![Value::Number(1), Value::Number(2)]),
+                Value::Array(vec![Value::Integer(1), Value::Integer(2)]),
                 Value::Array(vec![
                     Value::String("a".to_string()),
                     Value::String("b".to_string()),
@@ -374,9 +374,9 @@ mod tests {
             ("nil", Value::Nil),
             ("number", Value::Float(3.14)),
             ("array", Value::from(vec![
-                Value::Number(1),
-                Value::Number(2),
-                Value::Number(3),
+                Value::Integer(1),
+                Value::Integer(2),
+                Value::Integer(3),
             ])),
             ("nested_map", Value::from_iter([
                 ("inner_key", Value::String("inner_value".to_string()))

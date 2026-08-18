@@ -36,7 +36,7 @@ impl<'de> Deserializer<'de> for ValueDeserializer {
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where V: Visitor<'de> {
         match self.value {
-            Value::Number(n) => visitor.visit_i64(n),
+            Value::Integer(n) => visitor.visit_i64(n),
             Value::Float(f) => visitor.visit_f64(f),
             Value::Bool(b) => visitor.visit_bool(b),
             Value::String(s) => visitor.visit_string(s),
