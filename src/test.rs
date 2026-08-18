@@ -61,6 +61,32 @@ fn arithmetic() -> Result<()> {
     Ok(())
 }
 
+#[test]
+fn mixed_integer_float_operators() -> Result<()> {
+    test_old!("1 + 0.5", "1.5");
+    test_old!("1.5 - 1", "0.5");
+    test_old!("2 * 0.5", "1");
+    test_old!("1.0 / 2", "0.5");
+    test_old!("2 ** 0.5", "1.4142135623730951");
+    test_old!("1 > 0.5", "true");
+    test_old!("1 >= 1.0", "true");
+    test_old!("1 < 1.5", "true");
+    test_old!("1 <= 1.0", "true");
+    test_old!("1 == 1.0", "true");
+    test_old!("1 != 1.0", "false");
+    Ok(())
+}
+
+#[test]
+fn logical_operators_are_strict_and_short_circuit() -> Result<()> {
+    let context = Context::default();
+    assert!(eval("true and 1", &context).is_err());
+    assert!(eval("1 or true", &context).is_err());
+    assert_eq!(eval("false and unknown", &context)?, Value::Bool(false));
+    assert_eq!(eval("true or unknown", &context)?, Value::Bool(true));
+    Ok(())
+}
+
 test!(order_of_ops, "1 + 2 * 3 + 1", "8");
 test!(is_true, "true", "true");
 test!(not_1, "!true", "false");

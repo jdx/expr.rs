@@ -1,10 +1,10 @@
 use crate::ast::node::Node;
-use crate::Value::{Array, Bool, Float, Map, Integer, String};
+use crate::Value::{Array, Bool, Float, Integer, Map, String};
 use crate::{bail, Result, Rule};
 use crate::{Context, Environment, Value};
-use pest::iterators::{Pair};
-use std::str::FromStr;
 use log::trace;
+use pest::iterators::Pair;
+use std::str::FromStr;
 
 #[derive(Debug, Clone, strum::EnumString, strum::Display)]
 pub enum Operator {
@@ -67,66 +67,114 @@ impl Environment<'_> {
         right: Node,
     ) -> Result<Value> {
         let left = self.eval_expr(ctx, left)?;
+        match &operator {
+            Operator::And => {
+                return match left {
+                    Bool(false) => Ok(Bool(false)),
+                    Bool(true) => match self.eval_expr(ctx, right)? {
+                        Bool(value) => Ok(Bool(value)),
+                        _ => bail!("Invalid operands for operator {operator}"),
+                    },
+                    _ => bail!("Invalid operands for operator {operator}"),
+                };
+            }
+            Operator::Or => {
+                return match left {
+                    Bool(true) => Ok(Bool(true)),
+                    Bool(false) => match self.eval_expr(ctx, right)? {
+                        Bool(value) => Ok(Bool(value)),
+                        _ => bail!("Invalid operands for operator {operator}"),
+                    },
+                    _ => bail!("Invalid operands for operator {operator}"),
+                };
+            }
+            _ => {}
+        }
         let right = self.eval_expr(ctx, right)?;
         let result = match operator {
             Operator::Add => match (left, right) {
                 (Integer(left), Integer(right)) => (left + right).into(),
                 (Float(left), Float(right)) => (left + right).into(),
+                (Integer(left), Float(right)) => Float(left as f64 + right),
+                (Float(left), Integer(right)) => Float(left + right as f64),
                 (String(left), String(right)) => format!("{left}{right}").into(),
                 _ => bail!("Invalid operands for operator +"),
             },
             Operator::Subtract => match (left, right) {
                 (Integer(left), Integer(right)) => Integer(left - right),
                 (Float(left), Float(right)) => Float(left - right),
+                (Integer(left), Float(right)) => Float(left as f64 - right),
+                (Float(left), Integer(right)) => Float(left - right as f64),
                 _ => bail!("Invalid operands for operator -"),
             },
             Operator::Multiply => match (left, right) {
                 (Integer(left), Integer(right)) => Integer(left * right),
                 (Float(left), Float(right)) => Float(left * right),
+                (Integer(left), Float(right)) => Float(left as f64 * right),
+                (Float(left), Integer(right)) => Float(left * right as f64),
                 _ => bail!("Invalid operands for operator *"),
             },
             Operator::Divide => match (left, right) {
                 (Integer(left), Integer(right)) => Integer(left / right),
                 (Float(left), Float(right)) => Float(left / right),
+                (Integer(left), Float(right)) => Float(left as f64 / right),
+                (Float(left), Integer(right)) => Float(left / right as f64),
                 _ => bail!("Invalid operands for operator /"),
             },
             Operator::Modulo => match (left, right) {
-                    (Integer(left), Integer(right)) => Integer(left % right),
-                    _ => bail!("Invalid operands for operator %"),
-                },
+                (Integer(left), Integer(right)) => Integer(left % right),
+                _ => bail!("Invalid operands for operator %"),
+            },
             Operator::Pow => match (left, right) {
                 (Integer(left), Integer(right)) => Integer(left.pow(right as u32)),
                 (Float(left), Float(right)) => Float(left.powf(right)),
+                (Integer(left), Float(right)) => Float((left as f64).powf(right)),
+                (Float(left), Integer(right)) => Float(left.powf(right as f64)),
                 _ => bail!("Invalid operands for operator {operator}"),
             },
-            Operator::Equal => Bool(left == right),
-            Operator::NotEqual => Bool(left != right),
+            Operator::Equal => match (left, right) {
+                (Integer(left), Float(right)) => Bool(left as f64 == right),
+                (Float(left), Integer(right)) => Bool(left == right as f64),
+                (left, right) => Bool(left == right),
+            },
+            Operator::NotEqual => match (left, right) {
+                (Integer(left), Float(right)) => Bool(left as f64 != right),
+                (Float(left), Integer(right)) => Bool(left != right as f64),
+                (left, right) => Bool(left != right),
+            },
             Operator::GreaterThan => match (left, right) {
                 (Integer(left), Integer(right)) => (left > right).into(),
                 (Float(left), Float(right)) => (left > right).into(),
+                (Integer(left), Float(right)) => (left as f64 > right).into(),
+                (Float(left), Integer(right)) => (left > right as f64).into(),
                 (String(left), String(right)) => (left > right).into(),
                 _ => bail!("Invalid operands for operator {operator}"),
             },
             Operator::GreaterThanOrEqual => match (left, right) {
                 (Integer(left), Integer(right)) => (left >= right).into(),
                 (Float(left), Float(right)) => (left >= right).into(),
+                (Integer(left), Float(right)) => (left as f64 >= right).into(),
+                (Float(left), Integer(right)) => (left >= right as f64).into(),
                 (String(left), String(right)) => (left >= right).into(),
                 _ => bail!("Invalid operands for operator {operator}"),
             },
             Operator::LessThan => match (left, right) {
                 (Integer(left), Integer(right)) => (left < right).into(),
                 (Float(left), Float(right)) => (left < right).into(),
+                (Integer(left), Float(right)) => ((left as f64) < right).into(),
+                (Float(left), Integer(right)) => (left < right as f64).into(),
                 (String(left), String(right)) => (left < right).into(),
                 _ => bail!("Invalid operands for operator {operator}"),
             },
             Operator::LessThanOrEqual => match (left, right) {
                 (Integer(left), Integer(right)) => (left <= right).into(),
                 (Float(left), Float(right)) => (left <= right).into(),
+                (Integer(left), Float(right)) => (left as f64 <= right).into(),
+                (Float(left), Integer(right)) => (left <= right as f64).into(),
                 (String(left), String(right)) => (left <= right).into(),
                 _ => bail!("Invalid operands for operator {operator}"),
             },
-            Operator::And => Bool(left.as_bool() == Some(true) && right.as_bool() == Some(true)),
-            Operator::Or => Bool(left.as_bool() == Some(true) || right.as_bool() == Some(true)),
+            Operator::And | Operator::Or => unreachable!("handled before evaluating right operand"),
             Operator::In => match (left, right) {
                 (String(left), Map(right)) => right.contains_key(&left).into(),
                 (left, Array(right)) => right.contains(&left).into(),
@@ -154,7 +202,7 @@ impl Environment<'_> {
                 _ => bail!("Invalid operands for operator matches"),
             },
         };
-        
+
         Ok(result)
     }
 }
