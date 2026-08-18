@@ -174,7 +174,8 @@ impl<'a> Environment<'a> {
                 left,
                 operator,
                 right,
-            } => self.eval_operator(ctx, operator, left, right)?,
+                compiled_regex,
+            } => self.eval_operator(ctx, operator, left, right, compiled_regex.as_ref())?,
             Node::Unary { operator, node } => self.eval_unary_operator(ctx, operator, node)?,
             Node::Postfix { operator, node } => self.eval_postfix_operator(ctx, operator, node)?,
             Node::Array(a) => Value::Array(

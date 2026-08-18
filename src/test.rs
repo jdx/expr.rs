@@ -179,6 +179,13 @@ bar`"#,
     Ok(())
 }
 
+#[test]
+fn dynamic_matches() -> Result<()> {
+    let ctx = Context::from_iter([("pattern", "^f")]);
+    assert_eq!(eval(r#""foo" matches pattern"#, &ctx)?.to_string(), "true");
+    Ok(())
+}
+
 test!(nil, "nil", "nil");
 test!(comment_line, "1 // foo", "1");
 test!(comment_block, r#"/*
