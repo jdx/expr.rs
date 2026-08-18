@@ -12,6 +12,10 @@ other Rust applications. The next release will be v2.
 expression-language parity. Go-specific reflection, static type checking,
 optimization, and bytecode execution are outside that compatibility target.
 
+The v2 compatibility profile covers nil, booleans, integers, floats, strings,
+arrays, and string-keyed maps. Bytes, date/time values, non-string map keys,
+multiline `if`/`else`, and scientific-notation literals are not yet supported.
+
 Evaluation is currently tree-walking. Bytecode compilation is not planned for
 v2; correctness, compatibility, and a small embeddable API take priority. A
 bytecode backend could be considered later if real-world profiling shows that
@@ -51,7 +55,7 @@ fn main() {
 
 ```toml
 [dependencies]
-expr-lang = { version = "1", features = ["serde"] }
+expr-lang = { version = "2", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 ```
 
@@ -83,7 +87,7 @@ fn main() {
 
 ```toml
 [dependencies]
-expr-lang = { version = "1", features = ["serde"] }
+expr-lang = { version = "2", features = ["serde"] }
 serde_json = "1.0"
 ```
 

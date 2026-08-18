@@ -479,7 +479,7 @@ mod tests {
                 "j": "k"
             }]
         }"#;
-        let val: serde_json::value::Value = serde_json::from_str(&raw).unwrap();
+        let val: serde_json::value::Value = serde_json::from_str(raw).unwrap();
         serde_json::to_string_pretty(&val).unwrap()
     }
 

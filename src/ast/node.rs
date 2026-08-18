@@ -105,7 +105,7 @@ impl From<Pairs<'_, Rule>> for Node {
 
 impl From<Pair<'_, Rule>> for Node {
     fn from(pair: Pair<Rule>) -> Self {
-        trace!("{:?} = {}", &pair.as_rule(), pair.as_str());
+        trace!("{:?} = {}", pair.as_rule(), pair.as_str());
         match pair.as_rule() {
             Rule::expr => pair.into_inner().into(),
             Rule::value => Node::Value(pair.into_inner().into()),
