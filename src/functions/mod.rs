@@ -1,4 +1,5 @@
 pub mod array;
+pub mod bitwise;
 pub mod convert;
 pub mod json;
 pub mod string;

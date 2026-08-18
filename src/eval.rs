@@ -1,6 +1,6 @@
 use crate::ast::node::Node;
 use crate::ast::program::Program;
-use crate::functions::{ExprCall, Function, array, convert, json, string};
+use crate::functions::{ExprCall, Function, array, bitwise, convert, json, string};
 use crate::parser::compile;
 use crate::{Context, Result, Value, bail};
 use indexmap::IndexMap;
@@ -66,6 +66,7 @@ impl<'a> Environment<'a> {
         };
         string::add_string_functions(&mut p);
         array::add_array_functions(&mut p);
+        bitwise::add_bitwise_functions(&mut p);
         convert::add_conversion_functions(&mut p);
         json::add_json_functions(&mut p);
         p
