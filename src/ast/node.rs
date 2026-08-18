@@ -23,6 +23,7 @@ pub enum Node {
         operator: Operator,
         left: Box<Node>,
         right: Box<Node>,
+        compiled_regex: Option<regex::Regex>,
     },
     Postfix {
         operator: PostfixOperator,
@@ -83,10 +84,20 @@ impl From<Pairs<'_, Rule>> for Node {
                 operator: operator.into(),
                 node: Box::new(left),
             })
-            .map_infix(|left, operator, right| Node::Operation {
-                operator: operator.into(),
-                left: Box::new(left),
-                right: Box::new(right),
+            .map_infix(|left, operator, right| {
+                let operator = operator.into();
+                let compiled_regex = match (&operator, &right) {
+                    (Operator::Matches, Node::Value(Value::String(pattern))) => {
+                        regex::Regex::new(pattern).ok()
+                    }
+                    _ => None,
+                };
+                Node::Operation {
+                    operator,
+                    left: Box::new(left),
+                    right: Box::new(right),
+                    compiled_regex,
+                }
             })
             .parse(pairs)
     }

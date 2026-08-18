@@ -88,6 +88,7 @@ impl Environment<'_> {
         operator: &Operator,
         left: &Node,
         right: &Node,
+        compiled_regex: Option<&regex::Regex>,
     ) -> Result<Value> {
         let left = self.eval_expr(ctx, left)?;
         match &operator {
@@ -217,8 +218,11 @@ impl Environment<'_> {
             },
             Operator::Matches => match (left, right) {
                 (String(left), String(right)) => {
-                    let re = regex::Regex::new(&right)?;
-                    Bool(re.is_match(&left))
+                    if let Some(regex) = compiled_regex {
+                        Bool(regex.is_match(&left))
+                    } else {
+                        Bool(regex::Regex::new(&right)?.is_match(&left))
+                    }
                 }
                 _ => bail!("Invalid operands for operator matches"),
             },
