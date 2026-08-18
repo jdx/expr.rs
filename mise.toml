@@ -3,6 +3,7 @@
 "cargo:pest_fmt" = "latest"
 git-cliff = "latest"
 watchexec = "latest"
+"github:jdx/tak" = "0.0.5"
 
 [settings]
 cargo.binstall_native = true
@@ -17,6 +18,18 @@ run = [
 alias = "t"
 depends = ["lint"]
 run = "cargo test"
+
+[tasks.perf]
+run = [
+  "cargo build --release --bin expr-bench",
+  "tak run",
+]
+
+[tasks."perf:record"]
+run = [
+  "cargo build --release --bin expr-bench",
+  "tak run --record",
+]
 
 [tasks.release]
 run = [
