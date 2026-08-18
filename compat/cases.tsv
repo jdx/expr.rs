@@ -84,6 +84,9 @@ sum([1, 2.5, 3])	6.5
 sum([1, 2, 3], {# * 2})	12
 reduce([1, 2, 3], #acc + #)	6
 reduce([1, 2, 3], #acc + #, 10)	16
+reduce([1, 2, 3], {let doubled = # * 2; #acc + doubled}, 10)	22
+[1, 2, 3] | reduce(#acc + #, 10)	16
+[1, 2, 3] | reduce({#acc + #}, 10)	16
 type(nil)	"nil"
 type(42)	"int"
 type(1.5)	"float"

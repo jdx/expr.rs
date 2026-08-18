@@ -144,6 +144,12 @@ fn context_is_materialized_only_for_env() -> Result<()> {
     Ok(())
 }
 
+#[test]
+fn empty_reduce_without_initial_value_errors() {
+    let context = Context::default();
+    assert!(eval("reduce([], #acc + #)", &context).is_err());
+}
+
 test!(order_of_ops, "1 + 2 * 3 + 1", "8");
 test!(is_true, "true", "true");
 test!(not_1, "!true", "false");

@@ -133,7 +133,7 @@ impl<'a> Environment<'a> {
 
     pub(crate) fn run_with_two_bindings(
         &self,
-        program: Program,
+        program: &Program,
         ctx: &dyn ContextProvider,
         first: (&str, Value),
         second: (&str, Value),

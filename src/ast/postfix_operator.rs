@@ -116,10 +116,8 @@ impl Environment<'_> {
                     predicate,
                 } = func.as_ref()
                 {
-                    let args = args
-                        .iter()
-                        .map(|arg| self.eval_expr(ctx, arg))
-                        .chain(once(Ok(value)))
+                    let args = once(Ok(value))
+                        .chain(args.iter().map(|arg| self.eval_expr(ctx, arg)))
                         .collect::<Result<Vec<Value>>>()?;
                     self.eval_func(ctx, ident, args, predicate.as_deref())?
                 } else {

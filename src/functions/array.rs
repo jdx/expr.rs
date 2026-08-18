@@ -24,7 +24,7 @@ pub fn add_array_functions(env: &mut Environment) {
             for value in values {
                 match c
                     .env
-                    .run_with_binding(predicate.clone(), c.ctx, "#", value.clone())?
+                    .run_with_binding(predicate, c.ctx, "#", value.clone())?
                 {
                     Value::Bool(true) => count += 1,
                     Value::Bool(false) => {}
@@ -54,7 +54,7 @@ pub fn add_array_functions(env: &mut Environment) {
         for value in values {
             let value = if let Some(predicate) = &c.predicate {
                 c.env
-                    .run_with_binding(predicate.clone(), c.ctx, "#", value.clone())?
+                    .run_with_binding(predicate, c.ctx, "#", value.clone())?
             } else {
                 value.clone()
             };
@@ -77,12 +77,12 @@ pub fn add_array_functions(env: &mut Environment) {
             Some(initial) => (initial.clone(), 0),
             None => match values.first() {
                 Some(first) => (first.clone(), 1),
-                None => return Ok(Value::Nil),
+                None => bail!("reduce() of an empty array requires an initial value"),
             },
         };
         for value in &values[start..] {
             accumulator = c.env.run_with_two_bindings(
-                predicate.clone(),
+                predicate,
                 c.ctx,
                 ("#", value.clone()),
                 ("#acc", accumulator),

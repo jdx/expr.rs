@@ -133,14 +133,21 @@ impl From<Pair<'_, Rule>> for Node {
                 // Uses >= 1 (not >= 2) so pipe syntax works: `arr | filter(# > 2)`.
                 if predicate.is_none()
                     && ident == "reduce"
-                    && args.len() >= 3
-                    && args[1].contains_hash_ident()
                 {
-                    let reducer = args.remove(1);
-                    predicate = Some(Box::new(Program {
-                        lines: Vec::new(),
-                        expr: reducer,
-                    }));
+                    let reducer_index = if args.len() >= 2 && args[1].contains_hash_ident() {
+                        Some(1)
+                    } else if !args.is_empty() && args[0].contains_hash_ident() {
+                        Some(0)
+                    } else {
+                        None
+                    };
+                    if let Some(index) = reducer_index {
+                        let reducer = args.remove(index);
+                        predicate = Some(Box::new(Program {
+                            lines: Vec::new(),
+                            expr: reducer,
+                        }));
+                    }
                 } else if predicate.is_none()
                     && !args.is_empty()
                     && Self::accepts_predicate(&ident)

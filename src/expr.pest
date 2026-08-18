@@ -7,9 +7,10 @@ prefix  = _{ negation_op | sign_op }
 infix   = _{ exponent_op | multiplication_op | addition_op | comparison_op | equal_op | and_op | or_op | not_in_op | string_op }
 postfix = _{ ternary | range_start_op | range_end_op | opt_membership_op | opt_index_op | membership_op | index_op | default_op | pipe }
 
-func              =  { ident ~ "(" ~ (expr ~ ("," ~ expr)*)? ~ (","? ~ predicate)? ~ ")" }
+func              =  { ident ~ "(" ~ (func_arg ~ ("," ~ func_arg)*)? ~ ")" }
+func_arg          = _{ predicate | expr }
 pipe              =  { "|" ~ func }
-predicate         =  { "." ~ ident | ("{"? ~ (program | expr) ~ "}"?) }
+predicate         =  { "." ~ ident | "{" ~ program ~ "}" }
 term              = _{ func | range | value | ident | array | map | "(" ~ expr ~ ")" }
 ternary           =  { "?" ~ expr ~ ":" ~ expr }
 membership_op     =  { "." ~ ident }
