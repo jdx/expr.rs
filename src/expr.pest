@@ -51,7 +51,13 @@ int              = @{
 }
 bool             =  { "true" | "false" }
 nil              =  { "nil" }
-decimal          = @{ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ | "." ~ ASCII_DIGIT+ }
+decimal          = @{
+    decimal_digits ~ "." ~ !"." ~ decimal_digits? ~ exponent?
+  | "." ~ decimal_digits ~ exponent?
+  | decimal_digits ~ exponent
+}
+decimal_digits   = _{ ASCII_DIGIT ~ ("_"? ~ ASCII_DIGIT)* }
+exponent         = _{ ("e" | "E") ~ ("+" | "-")? ~ decimal_digits }
 
 not_in_op = @{ "not" ~ WHITESPACE+ ~ "in" }
 

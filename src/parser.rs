@@ -14,18 +14,32 @@ pub fn compile(code: &str) -> Result<Program> {
     #[cfg(debug_assertions)]
     pest::set_error_detail(true);
     let pairs = ExprPest::parse(Rule::full, code).map_err(|e| Error::PestError(Box::new(e)))?;
-    validate_integer_literals(pairs.clone())?;
+    validate_numeric_literals(pairs.clone())?;
     Ok(pairs.into())
 }
 
-fn validate_integer_literals(pairs: Pairs<'_, Rule>) -> Result<()> {
+fn validate_numeric_literals(pairs: Pairs<'_, Rule>) -> Result<()> {
     for pair in pairs {
-        if pair.as_rule() == Rule::int {
-            Value::parse_integer(pair.as_str()).map_err(|error| {
-                Error::ParseError(format!("invalid integer literal {}: {error}", pair.as_str()))
-            })?;
+        match pair.as_rule() {
+            Rule::int => {
+                Value::parse_integer(pair.as_str()).map_err(|error| {
+                    Error::ParseError(format!("invalid integer literal {}: {error}", pair.as_str()))
+                })?;
+            }
+            Rule::decimal => {
+                let value = Value::parse_float(pair.as_str()).map_err(|error| {
+                    Error::ParseError(format!("invalid float literal {}: {error}", pair.as_str()))
+                })?;
+                if !value.is_finite() {
+                    return Err(Error::ParseError(format!(
+                        "float literal is out of range: {}",
+                        pair.as_str()
+                    )));
+                }
+            }
+            _ => {}
         }
-        validate_integer_literals(pair.into_inner())?;
+        validate_numeric_literals(pair.into_inner())?;
     }
     Ok(())
 }
@@ -45,6 +59,20 @@ mod literal_tests {
     fn rejects_integer_overflow_without_panicking() {
         assert!(compile("0x10000000000000000").is_err());
         assert!(compile("9223372036854775808").is_err());
+    }
+
+    #[test]
+    fn accepts_scientific_float_literals() {
+        for code in ["1e3", "1.2e-4", ".5e+2", "1_000.5_0e-2"] {
+            assert!(compile(code).is_ok(), "{code} should be accepted");
+        }
+    }
+
+    #[test]
+    fn rejects_malformed_or_overflowing_float_literals() {
+        for code in ["1e", "1e+", "1e_2", "1e9999"] {
+            assert!(compile(code).is_err(), "{code} should be rejected");
+        }
     }
 }
 

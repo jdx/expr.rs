@@ -126,21 +126,19 @@ impl<'a> Environment<'a> {
         key: &str,
         value: Value,
     ) -> Result<Value> {
-        let mut scope = ContextScope::new(ctx);
-        scope.insert(key, value);
-        self.run(program, &scope)
+        self.run_with_bindings(program, ctx, [(key, value)])
     }
 
-    pub(crate) fn run_with_two_bindings(
+    pub(crate) fn run_with_bindings<'b>(
         &self,
         program: &Program,
         ctx: &dyn ContextProvider,
-        first: (&str, Value),
-        second: (&str, Value),
+        bindings: impl IntoIterator<Item = (&'b str, Value)>,
     ) -> Result<Value> {
         let mut scope = ContextScope::new(ctx);
-        scope.insert(first.0, first.1);
-        scope.insert(second.0, second.1);
+        for (key, value) in bindings {
+            scope.insert(key, value);
+        }
         self.run(program, &scope)
     }
 

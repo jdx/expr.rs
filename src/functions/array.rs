@@ -80,12 +80,15 @@ pub fn add_array_functions(env: &mut Environment) {
                 None => bail!("reduce() of an empty array requires an initial value"),
             },
         };
-        for value in &values[start..] {
-            accumulator = c.env.run_with_two_bindings(
+        for (index, value) in values.iter().enumerate().skip(start) {
+            accumulator = c.env.run_with_bindings(
                 predicate,
                 c.ctx,
-                ("#", value.clone()),
-                ("#acc", accumulator),
+                [
+                    ("#", value.clone()),
+                    ("#acc", accumulator),
+                    ("#index", index.into()),
+                ],
             )?;
         }
         Ok(accumulator)
@@ -177,12 +180,11 @@ pub fn add_array_functions(env: &mut Environment) {
             bail!("map() takes exactly one argument and a predicate");
         }
         if let (Value::Array(a), Some(predicate)) = (&c.args[0], c.predicate) {
-            for value in a {
-                result.push(c.env.run_with_binding(
+            for (index, value) in a.iter().enumerate() {
+                result.push(c.env.run_with_bindings(
                     predicate,
                     c.ctx,
-                    "#",
-                    value.clone(),
+                    [("#", value.clone()), ("#index", index.into())],
                 )?);
             }
         } else {
