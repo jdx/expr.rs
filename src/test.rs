@@ -185,7 +185,7 @@ fn functions() -> Result<()> {
         eprintln!("{}", x);
         let mut sum = 0;
         for arg in c.args {
-            if let Value::Number(n) = arg {
+            if let Value::Integer(n) = arg {
                 sum += n;
             } else {
                 return Err(format!("Invalid argument: {arg:?}").into());
@@ -208,7 +208,7 @@ fn functions_with_parser() -> Result<()> {
         eprintln!("{}", x);
         let mut sum = 0;
         for arg in c.args {
-            if let Value::Number(n) = arg {
+            if let Value::Integer(n) = arg {
                 sum += n;
             } else {
                 return Err(format!("Invalid argument: {arg:?}").into());

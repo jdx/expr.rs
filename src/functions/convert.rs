@@ -74,7 +74,7 @@ fn go_float_string(value: f64) -> String {
 
 fn expr_string(value: &Value) -> String {
     match value {
-        Value::Number(value) => value.to_string(),
+        Value::Integer(value) => value.to_string(),
         Value::Float(value) => go_float_string(*value),
         Value::Bool(value) => value.to_string(),
         Value::Nil => "<nil>".to_string(),
@@ -101,17 +101,17 @@ fn expr_string(value: &Value) -> String {
 /// Add expr's built-in conversion functions.
 pub fn add_conversion_functions(env: &mut Environment) {
     env.add_function("int", |call| match one_arg("int", call.args)? {
-        Value::Number(value) => Ok(value.into()),
+        Value::Integer(value) => Ok(value.into()),
         Value::Float(value) => Ok((value as i64).into()),
         Value::String(value) => value
             .parse::<i64>()
-            .map(Value::Number)
+            .map(Value::Integer)
             .map_err(|_| format!("invalid operation: int({value})").into()),
         value => bail!("invalid operation: int({})", expr_string(&value)),
     });
 
     env.add_function("float", |call| match one_arg("float", call.args)? {
-        Value::Number(value) => Ok((value as f64).into()),
+        Value::Integer(value) => Ok((value as f64).into()),
         Value::Float(value) => Ok(value.into()),
         Value::String(value) => value
             .parse::<f64>()
@@ -135,9 +135,9 @@ mod tests {
     fn conversion_builtins_match_expr() {
         let context = Context::default();
         let cases = [
-            ("int(5.5)", Value::Number(5)),
-            ("int(5)", Value::Number(5)),
-            (r#"int("5")"#, Value::Number(5)),
+            ("int(5.5)", Value::Integer(5)),
+            ("int(5)", Value::Integer(5)),
+            (r#"int("5")"#, Value::Integer(5)),
             ("float(5)", Value::Float(5.0)),
             ("float(5.5)", Value::Float(5.5)),
             (r#"float("5.5")"#, Value::Float(5.5)),

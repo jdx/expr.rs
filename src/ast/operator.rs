@@ -1,5 +1,5 @@
 use crate::ast::node::Node;
-use crate::Value::{Array, Bool, Float, Map, Number, String};
+use crate::Value::{Array, Bool, Float, Map, Integer, String};
 use crate::{bail, Result, Rule};
 use crate::{Context, Environment, Value};
 use pest::iterators::{Pair};
@@ -70,57 +70,57 @@ impl Environment<'_> {
         let right = self.eval_expr(ctx, right)?;
         let result = match operator {
             Operator::Add => match (left, right) {
-                (Number(left), Number(right)) => (left + right).into(),
+                (Integer(left), Integer(right)) => (left + right).into(),
                 (Float(left), Float(right)) => (left + right).into(),
                 (String(left), String(right)) => format!("{left}{right}").into(),
                 _ => bail!("Invalid operands for operator +"),
             },
             Operator::Subtract => match (left, right) {
-                (Number(left), Number(right)) => Number(left - right),
+                (Integer(left), Integer(right)) => Integer(left - right),
                 (Float(left), Float(right)) => Float(left - right),
                 _ => bail!("Invalid operands for operator -"),
             },
             Operator::Multiply => match (left, right) {
-                (Number(left), Number(right)) => Number(left * right),
+                (Integer(left), Integer(right)) => Integer(left * right),
                 (Float(left), Float(right)) => Float(left * right),
                 _ => bail!("Invalid operands for operator *"),
             },
             Operator::Divide => match (left, right) {
-                (Number(left), Number(right)) => Number(left / right),
+                (Integer(left), Integer(right)) => Integer(left / right),
                 (Float(left), Float(right)) => Float(left / right),
                 _ => bail!("Invalid operands for operator /"),
             },
             Operator::Modulo => match (left, right) {
-                    (Number(left), Number(right)) => Number(left % right),
+                    (Integer(left), Integer(right)) => Integer(left % right),
                     _ => bail!("Invalid operands for operator %"),
                 },
             Operator::Pow => match (left, right) {
-                (Number(left), Number(right)) => Number(left.pow(right as u32)),
+                (Integer(left), Integer(right)) => Integer(left.pow(right as u32)),
                 (Float(left), Float(right)) => Float(left.powf(right)),
                 _ => bail!("Invalid operands for operator {operator}"),
             },
             Operator::Equal => Bool(left == right),
             Operator::NotEqual => Bool(left != right),
             Operator::GreaterThan => match (left, right) {
-                (Number(left), Number(right)) => (left > right).into(),
+                (Integer(left), Integer(right)) => (left > right).into(),
                 (Float(left), Float(right)) => (left > right).into(),
                 (String(left), String(right)) => (left > right).into(),
                 _ => bail!("Invalid operands for operator {operator}"),
             },
             Operator::GreaterThanOrEqual => match (left, right) {
-                (Number(left), Number(right)) => (left >= right).into(),
+                (Integer(left), Integer(right)) => (left >= right).into(),
                 (Float(left), Float(right)) => (left >= right).into(),
                 (String(left), String(right)) => (left >= right).into(),
                 _ => bail!("Invalid operands for operator {operator}"),
             },
             Operator::LessThan => match (left, right) {
-                (Number(left), Number(right)) => (left < right).into(),
+                (Integer(left), Integer(right)) => (left < right).into(),
                 (Float(left), Float(right)) => (left < right).into(),
                 (String(left), String(right)) => (left < right).into(),
                 _ => bail!("Invalid operands for operator {operator}"),
             },
             Operator::LessThanOrEqual => match (left, right) {
-                (Number(left), Number(right)) => (left <= right).into(),
+                (Integer(left), Integer(right)) => (left <= right).into(),
                 (Float(left), Float(right)) => (left <= right).into(),
                 (String(left), String(right)) => (left <= right).into(),
                 _ => bail!("Invalid operands for operator {operator}"),

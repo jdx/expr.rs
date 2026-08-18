@@ -12,7 +12,7 @@ use std::fmt::{Display, Formatter};
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(untagged))]
 pub enum Value {
-    Number(i64),
+    Integer(i64),
     Bool(bool),
     Float(f64),
     #[default]
@@ -30,9 +30,9 @@ impl Value {
         }
     }
 
-    pub fn as_number(&self) -> Option<i64> {
+    pub fn as_integer(&self) -> Option<i64> {
         match self {
-            Value::Number(n) => Some(*n),
+            Value::Integer(n) => Some(*n),
             _ => None,
         }
     }
@@ -89,19 +89,19 @@ impl AsRef<Value> for Value {
 
 impl From<i64> for Value {
     fn from(n: i64) -> Self {
-        Value::Number(n)
+        Value::Integer(n)
     }
 }
 
 impl From<i32> for Value {
     fn from(n: i32) -> Self {
-        Value::Number(n as i64)
+        Value::Integer(n as i64)
     }
 }
 
 impl From<usize> for Value {
     fn from(n: usize) -> Self {
-        Value::Number(n as i64)
+        Value::Integer(n as i64)
     }
 }
 
@@ -150,7 +150,7 @@ impl From<IndexMap<String, Value>> for Value {
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            Value::Number(n) => write!(f, "{n}"),
+            Value::Integer(n) => write!(f, "{n}"),
             Value::Float(n) => write!(f, "{n}"),
             Value::Bool(b) => write!(f, "{b}"),
             Value::Nil => write!(f, "nil"),
@@ -196,7 +196,7 @@ impl From<Pair<'_, Rule>> for Value {
             Rule::value => pair.into_inner().into(),
             Rule::nil => Value::Nil,
             Rule::bool => Value::Bool(pair.as_str().parse().unwrap()),
-            Rule::int => Value::Number(pair.as_str().parse().unwrap()),
+            Rule::int => Value::Integer(pair.as_str().parse().unwrap()),
             Rule::decimal => Value::Float(pair.as_str().parse().unwrap()),
             Rule::string_multiline => pair.into_inner().as_str().into(),
             Rule::string => pair

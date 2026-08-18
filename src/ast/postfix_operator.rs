@@ -76,7 +76,7 @@ impl Environment<'_> {
         let value = self.eval_expr(ctx, node)?;
         let result = match operator {
             PostfixOperator::Index { idx, optional } => match self.eval_index_key(ctx, *idx)? {
-                Value::Number(idx) => match value {
+                Value::Integer(idx) => match value {
                     Value::Array(arr) => {
                         let idx = i64_to_idx(idx, arr.len());
                         arr.get(idx).cloned().unwrap_or(Value::Nil)

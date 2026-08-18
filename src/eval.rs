@@ -37,7 +37,7 @@ pub fn eval(code: &str, ctx: &Context) -> Result<Value> {
 /// env.add_function("add", |c| {
 ///   let mut sum = 0;
 ///     for arg in c.args {
-///       if let Value::Number(n) = arg {
+///       if let Value::Integer(n) = arg {
 ///         sum += n;
 ///        } else {
 ///          panic!("Invalid argument: {arg:?}");
@@ -81,7 +81,7 @@ impl<'a> Environment<'a> {
     /// env.add_function("add", |c| {
     ///   let mut sum = 0;
     ///     for arg in c.args {
-    ///       if let Value::Number(n) = arg {
+    ///       if let Value::Integer(n) = arg {
     ///         sum += n;
     ///        } else {
     ///          panic!("Invalid argument: {arg:?}");
@@ -163,8 +163,8 @@ impl<'a> Environment<'a> {
                     .collect::<Result<_>>()?,
             ), // node => bail!("unexpected node: {node:?}"),
             Node::Range(start, end) => match (self.eval_expr(ctx, *start)?, self.eval_expr(ctx, *end)?) {
-                (Value::Number(start), Value::Number(end)) => {
-                    Value::Array((start..=end).map(Value::Number).collect())
+                (Value::Integer(start), Value::Integer(end)) => {
+                    Value::Array((start..=end).map(Value::Integer).collect())
                 }
                 (start, end) => bail!("invalid range: {start:?}..{end:?}"),
             }

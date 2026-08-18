@@ -9,7 +9,7 @@ fn json_to_value(json: serde_json::Value) -> Value {
         serde_json::Value::Bool(b) => Value::Bool(b),
         serde_json::Value::Number(n) => {
             if let Some(i) = n.as_i64() {
-                Value::Number(i)
+                Value::Integer(i)
             } else if let Some(f) = n.as_f64() {
                 Value::Float(f)
             } else {
@@ -31,7 +31,7 @@ fn value_to_json(value: &Value) -> serde_json::Value {
     match value {
         Value::Nil => serde_json::Value::Null,
         Value::Bool(b) => serde_json::Value::Bool(*b),
-        Value::Number(n) => serde_json::Value::Number((*n).into()),
+        Value::Integer(n) => serde_json::Value::Number((*n).into()),
         Value::Float(f) => {
             serde_json::Number::from_f64(*f)
                 .map(serde_json::Value::Number)
@@ -105,16 +105,16 @@ pub fn add_json_functions(env: &mut Environment) {
         }
     });
 
-    // len(array|string|map) -> Number
+    // len(array|string|map) -> Integer
     // Returns the length of an array, string, or map
     env.add_function("len", |c| {
         if c.args.len() != 1 {
             bail!("len() takes exactly one argument");
         }
         match &c.args[0] {
-            Value::Array(a) => Ok(Value::Number(a.len() as i64)),
-            Value::String(s) => Ok(Value::Number(s.len() as i64)),
-            Value::Map(m) => Ok(Value::Number(m.len() as i64)),
+            Value::Array(a) => Ok(Value::Integer(a.len() as i64)),
+            Value::String(s) => Ok(Value::Integer(s.len() as i64)),
+            Value::Map(m) => Ok(Value::Integer(m.len() as i64)),
             _ => bail!("len() takes an array, string, or map as the argument"),
         }
     });
