@@ -83,7 +83,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Run a compiled expr program
-    pub fn run(&self, program: Program, ctx: &dyn ContextProvider) -> Result<Value> {
+    pub fn run(&self, program: &Program, ctx: &dyn ContextProvider) -> Result<Value> {
         self.env.run(program, ctx)
     }
 
@@ -101,7 +101,7 @@ impl<'a> Parser<'a> {
         self.env.eval(code, ctx)
     }
 
-    pub fn eval_expr(&self, ctx: &dyn ContextProvider, node: Node) -> Result<Value> {
+    pub fn eval_expr(&self, ctx: &dyn ContextProvider, node: &Node) -> Result<Value> {
         self.env.eval_expr(ctx, node)
     }
 }

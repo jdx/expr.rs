@@ -17,7 +17,7 @@ fn context() {
     let ctx = Context::from_iter((0..10_000).map(|i| (format!("key_{i}"), i)));
     let program = compile("key_9999 + 1").unwrap();
     for _ in 0..100 {
-        black_box(run(program.clone(), black_box(&ctx)).unwrap());
+        black_box(run(black_box(&program), black_box(&ctx)).unwrap());
     }
 }
 
@@ -26,7 +26,7 @@ fn predicate() {
     let ctx = Context::from_iter([("items", Value::Array(items))]);
     let program = compile("map(items, {# + 1})").unwrap();
     for _ in 0..10 {
-        black_box(run(program.clone(), black_box(&ctx)).unwrap());
+        black_box(run(black_box(&program), black_box(&ctx)).unwrap());
     }
 }
 
@@ -35,7 +35,7 @@ fn regex() {
     let program =
         compile(r#""release-2.0.0" matches "^release-[0-9]+\\.[0-9]+\\.[0-9]+$""#).unwrap();
     for _ in 0..10_000 {
-        black_box(run(program.clone(), black_box(&ctx)).unwrap());
+        black_box(run(black_box(&program), black_box(&ctx)).unwrap());
     }
 }
 
@@ -46,6 +46,6 @@ fn json() {
     let ctx = Context::from_iter([("payload", Value::Map(payload))]);
     let program = compile("toJSON(payload)").unwrap();
     for _ in 0..100 {
-        black_box(run(program.clone(), black_box(&ctx)).unwrap());
+        black_box(run(black_box(&program), black_box(&ctx)).unwrap());
     }
 }

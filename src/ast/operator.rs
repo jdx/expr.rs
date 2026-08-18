@@ -85,9 +85,9 @@ impl Environment<'_> {
     pub fn eval_operator(
         &self,
         ctx: &dyn ContextProvider,
-        operator: Operator,
-        left: Node,
-        right: Node,
+        operator: &Operator,
+        left: &Node,
+        right: &Node,
     ) -> Result<Value> {
         let left = self.eval_expr(ctx, left)?;
         match &operator {

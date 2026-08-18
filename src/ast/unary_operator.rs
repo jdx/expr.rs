@@ -32,8 +32,8 @@ impl Environment<'_> {
     pub fn eval_unary_operator(
         &self,
         ctx: &dyn ContextProvider,
-        operator: UnaryOperator,
-        node: Node,
+        operator: &UnaryOperator,
+        node: &Node,
     ) -> Result<Value> {
         let node = self.eval_expr(ctx, node)?;
         let result = match operator {

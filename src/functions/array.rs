@@ -10,7 +10,7 @@ pub fn add_array_functions(env: &mut Environment) {
             for value in a {
                 if let Value::Bool(false) =
                     c.env
-                        .run_with_binding(predicate.clone(), c.ctx, "#", value.clone())?
+                        .run_with_binding(predicate, c.ctx, "#", value.clone())?
                 {
                     return Ok(false.into());
                 }
@@ -29,7 +29,7 @@ pub fn add_array_functions(env: &mut Environment) {
             for value in a {
                 if let Value::Bool(true) =
                     c.env
-                        .run_with_binding(predicate.clone(), c.ctx, "#", value.clone())?
+                        .run_with_binding(predicate, c.ctx, "#", value.clone())?
                 {
                     return Ok(true.into());
                 }
@@ -49,7 +49,7 @@ pub fn add_array_functions(env: &mut Environment) {
             for value in a {
                 if let Value::Bool(true) =
                     c.env
-                        .run_with_binding(predicate.clone(), c.ctx, "#", value.clone())?
+                        .run_with_binding(predicate, c.ctx, "#", value.clone())?
                 {
                     if found {
                         return Ok(false.into());
@@ -71,7 +71,7 @@ pub fn add_array_functions(env: &mut Environment) {
             for value in a {
                 if let Value::Bool(true) =
                     c.env
-                        .run_with_binding(predicate.clone(), c.ctx, "#", value.clone())?
+                        .run_with_binding(predicate, c.ctx, "#", value.clone())?
                 {
                     return Ok(false.into());
                 }
@@ -90,7 +90,7 @@ pub fn add_array_functions(env: &mut Environment) {
         if let (Value::Array(a), Some(predicate)) = (&c.args[0], c.predicate) {
             for value in a {
                 result.push(c.env.run_with_binding(
-                    predicate.clone(),
+                    predicate,
                     c.ctx,
                     "#",
                     value.clone(),
@@ -111,7 +111,7 @@ pub fn add_array_functions(env: &mut Environment) {
             for value in a {
                 if let Value::Bool(true) =
                     c.env
-                        .run_with_binding(predicate.clone(), c.ctx, "#", value.clone())?
+                        .run_with_binding(predicate, c.ctx, "#", value.clone())?
                 {
                     result.push(value.clone());
                 }
@@ -130,7 +130,7 @@ pub fn add_array_functions(env: &mut Environment) {
             for value in a {
                 if let Value::Bool(true) =
                     c.env
-                        .run_with_binding(predicate.clone(), c.ctx, "#", value.clone())?
+                        .run_with_binding(predicate, c.ctx, "#", value.clone())?
                 {
                     return Ok(value.clone());
                 }
@@ -149,7 +149,7 @@ pub fn add_array_functions(env: &mut Environment) {
             for (i, value) in a.iter().enumerate() {
                 if let Value::Bool(true) =
                     c.env
-                        .run_with_binding(predicate.clone(), c.ctx, "#", value.clone())?
+                        .run_with_binding(predicate, c.ctx, "#", value.clone())?
                 {
                     return Ok(i.into());
                 }
@@ -168,7 +168,7 @@ pub fn add_array_functions(env: &mut Environment) {
             for value in a.iter().rev() {
                 if let Value::Bool(true) =
                     c.env
-                        .run_with_binding(predicate.clone(), c.ctx, "#", value.clone())?
+                        .run_with_binding(predicate, c.ctx, "#", value.clone())?
                 {
                     return Ok(value.clone());
                 }
@@ -187,7 +187,7 @@ pub fn add_array_functions(env: &mut Environment) {
             for (i, value) in a.iter().enumerate().rev() {
                 if let Value::Bool(true) =
                     c.env
-                        .run_with_binding(predicate.clone(), c.ctx, "#", value.clone())?
+                        .run_with_binding(predicate, c.ctx, "#", value.clone())?
                 {
                     return Ok(i.into());
                 }
@@ -206,7 +206,7 @@ pub fn add_array_functions(env: &mut Environment) {
             for value in a {
                 if let Some(key) = c
                     .env
-                    .run_with_binding(predicate.clone(), c.ctx, "#", value.clone())?
+                    .run_with_binding(predicate, c.ctx, "#", value.clone())?
                     .as_string()
                 {
                     groups.entry(key.to_string()).or_insert_with(Vec::new).push(value.clone());
@@ -276,7 +276,7 @@ pub fn add_array_functions(env: &mut Environment) {
         for value in a {
             let key = c
                 .env
-                .run_with_binding(predicate.clone(), c.ctx, "#", value.clone())?;
+                .run_with_binding(predicate, c.ctx, "#", value.clone())?;
             keyed.push((key, value.clone()));
         }
         keyed.sort_by(|(a, _), (b, _)| {

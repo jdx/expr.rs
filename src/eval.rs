@@ -10,7 +10,7 @@ use std::fmt;
 use std::fmt::{Debug, Formatter};
 
 /// Run a compiled expr program, using the default environment
-pub fn run(program: Program, ctx: &dyn ContextProvider) -> Result<Value> {
+pub fn run(program: &Program, ctx: &dyn ContextProvider) -> Result<Value> {
     DEFAULT_ENVIRONMENT.run(program, ctx)
 }
 
@@ -106,17 +106,17 @@ impl<'a> Environment<'a> {
     }
 
     /// Run a compiled expr program
-    pub fn run(&self, program: Program, ctx: &dyn ContextProvider) -> Result<Value> {
+    pub fn run(&self, program: &Program, ctx: &dyn ContextProvider) -> Result<Value> {
         let mut ctx = ContextScope::new(ctx);
-        for (id, expr) in program.lines {
+        for (id, expr) in &program.lines {
             ctx.insert(id, self.eval_expr(&ctx, expr)?);
         }
-        self.eval_expr(&ctx, program.expr)
+        self.eval_expr(&ctx, &program.expr)
     }
 
     pub(crate) fn run_with_binding(
         &self,
-        program: Program,
+        program: &Program,
         ctx: &dyn ContextProvider,
         key: &str,
         value: Value,
@@ -138,12 +138,12 @@ impl<'a> Environment<'a> {
     /// ```
     pub fn eval(&self, code: &str, ctx: &dyn ContextProvider) -> Result<Value> {
         let program = compile(code)?;
-        self.run(program, ctx)
+        self.run(&program, ctx)
     }
 
-    pub fn eval_expr(&self, ctx: &dyn ContextProvider, node: Node) -> Result<Value> {
+    pub fn eval_expr(&self, ctx: &dyn ContextProvider, node: &Node) -> Result<Value> {
         let value = match node {
-            Node::Value(value) => value,
+            Node::Value(value) => value.clone(),
             Node::Ident(id) => {
                 if id == "$env" {
                     Value::Map(ctx.environment().0)
@@ -152,7 +152,7 @@ impl<'a> Environment<'a> {
                 } else if let Some(item) = ctx
                     .get("#")
                     .and_then(|o| o.as_map())
-                    .and_then(|m| m.get(&id))
+                    .and_then(|m| m.get(id))
                 {
                     item.clone()
                 } else {
@@ -168,22 +168,22 @@ impl<'a> Environment<'a> {
                     .into_iter()
                     .map(|e| self.eval_expr(ctx, e))
                     .collect::<Result<_>>()?;
-                self.eval_func(ctx, ident, args, predicate.map(|l| *l))?
+                self.eval_func(ctx, ident, args, predicate.as_deref())?
             }
             Node::Operation {
                 left,
                 operator,
                 right,
-            } => self.eval_operator(ctx, operator, *left, *right)?,
-            Node::Unary { operator, node } => self.eval_unary_operator(ctx, operator, *node)?,
-            Node::Postfix { operator, node } => self.eval_postfix_operator(ctx, operator, *node)?,
+            } => self.eval_operator(ctx, operator, left, right)?,
+            Node::Unary { operator, node } => self.eval_unary_operator(ctx, operator, node)?,
+            Node::Postfix { operator, node } => self.eval_postfix_operator(ctx, operator, node)?,
             Node::Array(a) => Value::Array(
-                a.into_iter()
+                a.iter()
                     .map(|e| self.eval_expr(ctx, e))
                     .collect::<Result<_>>()?,
             ), // node => bail!("unexpected node: {node:?}"),
             Node::Range(start, end) => {
-                match (self.eval_expr(ctx, *start)?, self.eval_expr(ctx, *end)?) {
+                match (self.eval_expr(ctx, start)?, self.eval_expr(ctx, end)?) {
                     (Value::Integer(start), Value::Integer(end)) => {
                         Value::Array((start..=end).map(Value::Integer).collect())
                     }
