@@ -7,11 +7,10 @@ Implementation of [expr](https://expr-lang.org/) in rust.
 `expr-lang` is actively maintained for use in [mise](https://mise.jdx.dev/) and
 other Rust applications. The next release will be v2.
 
-Language support is not yet complete. The v2 goal is source-level compatibility
-with the Go implementation of expr for the syntax and built-ins this crate
-supports. Differences in those supported areas are treated as bugs unless they
-are documented. See the [issue tracker](https://github.com/jdx/expr.rs/issues)
-for known gaps.
+`expr-lang` implements the core expr syntax and built-ins used by mise. Version
+2 targets Go-compatible runtime semantics and is expanding toward complete
+expression-language parity. Go-specific reflection, static type checking,
+optimization, and bytecode execution are outside that compatibility target.
 
 Evaluation is currently tree-walking. Bytecode compilation is not planned for
 v2; correctness, compatibility, and a small embeddable API take priority. A
