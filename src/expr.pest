@@ -55,7 +55,7 @@ decimal          = @{ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ | "." ~ ASCII_DIGIT+ }
 
 not_in_op        = @{ "not" ~ WHITESPACE+ ~ "in" }
 
-ident         = @{ "#" | (("$" | ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")*) }
+ident         = @{ "#" ~ (ASCII_ALPHANUMERIC | "_")* | (("$" | ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")*) }
 char_single   =  {
     !("'" | "\\") ~ ANY
   | "\\" ~ ("'" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")

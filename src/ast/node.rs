@@ -35,7 +35,7 @@ impl Node {
     /// Check if this node or any of its children reference the `#` variable
     pub(crate) fn contains_hash_ident(&self) -> bool {
         match self {
-            Node::Ident(id) => id == "#",
+            Node::Ident(id) => id.starts_with('#'),
             Node::Operation { left, right, .. } => {
                 left.contains_hash_ident() || right.contains_hash_ident()
             }
@@ -132,6 +132,16 @@ impl From<Pair<'_, Rule>> for Node {
                 // nested calls like `indexOf("abc", #)` inside braced predicates.
                 // Uses >= 1 (not >= 2) so pipe syntax works: `arr | filter(# > 2)`.
                 if predicate.is_none()
+                    && ident == "reduce"
+                    && args.len() >= 3
+                    && args[1].contains_hash_ident()
+                {
+                    let reducer = args.remove(1);
+                    predicate = Some(Box::new(Program {
+                        lines: Vec::new(),
+                        expr: reducer,
+                    }));
+                } else if predicate.is_none()
                     && !args.is_empty()
                     && Self::accepts_predicate(&ident)
                     && args.last().unwrap().contains_hash_ident()
