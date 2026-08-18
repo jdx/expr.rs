@@ -10,18 +10,16 @@ fn one_array(name: &str, mut args: Vec<Value>) -> crate::Result<Vec<Value>> {
     }
 }
 
-fn flatten(values: Vec<Value>, output: &mut Vec<Value>) {
-    let mut pending = values;
-    pending.reverse();
-    while let Some(value) = pending.pop() {
+fn flatten(values: Vec<Value>) -> Vec<Value> {
+    let mut stack = values.into_iter().rev().collect::<Vec<_>>();
+    let mut output = Vec::new();
+    while let Some(value) = stack.pop() {
         match value {
-            Value::Array(mut values) => {
-                values.reverse();
-                pending.extend(values);
-            }
+            Value::Array(values) => stack.extend(values.into_iter().rev()),
             value => output.push(value),
         }
     }
+    output
 }
 
 /// Add Go expr-compatible collection utility functions.
@@ -106,9 +104,7 @@ pub fn add_collection_functions(env: &mut Environment) {
     });
     env.add_function("flatten", |call| {
         let values = one_array("flatten", call.args)?;
-        let mut output = Vec::new();
-        flatten(values, &mut output);
-        Ok(Value::Array(output))
+        Ok(Value::Array(flatten(values)))
     });
 }
 
@@ -123,9 +119,6 @@ mod tests {
         for _ in 0..20_000 {
             value = Value::Array(vec![value]);
         }
-
-        let mut output = Vec::new();
-        flatten(vec![value], &mut output);
-        assert_eq!(output, vec![Value::Integer(1)]);
+        assert_eq!(flatten(vec![value]), vec![Value::Integer(1)]);
     }
 }

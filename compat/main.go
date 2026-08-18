@@ -11,6 +11,11 @@ import (
 )
 
 func main() {
+	verifyResults()
+	verifyErrors()
+}
+
+func verifyResults() {
 	file, err := os.Open("cases.tsv")
 	if err != nil {
 		panic(err)
@@ -59,4 +64,35 @@ func main() {
 		panic(err)
 	}
 	fmt.Printf("verified %d lines against Go expr v1.17.8\n", line)
+}
+
+func verifyErrors() {
+	file, err := os.Open("errors.tsv")
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	line := 0
+	verified := 0
+	for scanner.Scan() {
+		line++
+		code := scanner.Text()
+		if code == "" || strings.HasPrefix(code, "#") {
+			continue
+		}
+		program, compileErr := goexpr.Compile(code)
+		if compileErr == nil {
+			_, runErr := goexpr.Run(program, nil)
+			if runErr == nil {
+				panic(fmt.Sprintf("errors.tsv:%d: expected expression to fail: %s", line, code))
+			}
+		}
+		verified++
+	}
+	if err := scanner.Err(); err != nil {
+		panic(err)
+	}
+	fmt.Printf("verified %d error cases against Go expr v1.17.8\n", verified)
 }
