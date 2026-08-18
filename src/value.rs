@@ -23,6 +23,17 @@ pub enum Value {
 }
 
 impl Value {
+    pub(crate) fn parse_integer(value: &str) -> std::result::Result<i64, std::num::ParseIntError> {
+        let value = value.replace('_', "");
+        let (digits, radix) = match value.as_bytes() {
+            [b'0', b'x' | b'X', ..] => (&value[2..], 16),
+            [b'0', b'o' | b'O', ..] => (&value[2..], 8),
+            [b'0', b'b' | b'B', ..] => (&value[2..], 2),
+            _ => (value.as_str(), 10),
+        };
+        i64::from_str_radix(digits, radix)
+    }
+
     pub fn as_bool(&self) -> Option<bool> {
         match self {
             Value::Bool(b) => Some(*b),
@@ -196,7 +207,9 @@ impl From<Pair<'_, Rule>> for Value {
             Rule::value => pair.into_inner().into(),
             Rule::nil => Value::Nil,
             Rule::bool => Value::Bool(pair.as_str().parse().unwrap()),
-            Rule::int => Value::Integer(pair.as_str().parse().unwrap()),
+            Rule::int => {
+                Value::Integer(Value::parse_integer(pair.as_str()).expect("literal validated"))
+            }
             Rule::decimal => Value::Float(pair.as_str().parse().unwrap()),
             Rule::string_multiline => pair.into_inner().as_str().into(),
             Rule::string => pair

@@ -92,6 +92,14 @@ fn logical_operators_are_strict_and_short_circuit() -> Result<()> {
 }
 
 #[test]
+fn not_in_accepts_go_whitespace() -> Result<()> {
+    test_old!("2 not   in [1, 3]", "true");
+    test_old!("2 not\tin [1, 3]", "true");
+    test_old!("2 not\nin [1, 3]", "true");
+    Ok(())
+}
+
+#[test]
 fn default_environment_includes_builtins() -> Result<()> {
     let context = Context::default();
     assert_eq!(

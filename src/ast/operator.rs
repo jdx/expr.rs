@@ -38,6 +38,8 @@ pub enum Operator {
     Or,
     #[strum(serialize = "in")]
     In,
+    #[strum(serialize = "not in")]
+    NotIn,
     #[strum(serialize = "contains")]
     Contains,
     #[strum(serialize = "startsWith")]
@@ -51,6 +53,9 @@ pub enum Operator {
 impl From<Pair<'_, Rule>> for Operator {
     fn from(pair: Pair<Rule>) -> Self {
         trace!("[operator] {pair:?}");
+        if pair.as_rule() == Rule::not_in_op {
+            return Operator::NotIn;
+        }
         match pair.as_str() {
             "**" => Operator::Pow,
             op => Operator::from_str(op).unwrap_or_else(|_| unreachable!("Invalid operator {op}")),
@@ -197,6 +202,11 @@ impl Environment<'_> {
                     .iter()
                     .any(|right| values_equal(&left, right))
                     .into(),
+                _ => bail!("Invalid operands for operator {operator}"),
+            },
+            Operator::NotIn => match (left, right) {
+                (String(left), Map(right)) => (!right.contains_key(&left)).into(),
+                (left, Array(right)) => (!right.contains(&left)).into(),
                 _ => bail!("Invalid operands for operator {operator}"),
             },
             Operator::Contains => match (left, right) {

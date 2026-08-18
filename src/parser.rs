@@ -5,6 +5,7 @@ use crate::functions::ExprCall;
 use crate::{ContextProvider, Error, Result, Value};
 use crate::{ExprPest, Rule};
 use pest::Parser as PestParser;
+use pest::iterators::Pairs;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 
@@ -13,7 +14,38 @@ pub fn compile(code: &str) -> Result<Program> {
     #[cfg(debug_assertions)]
     pest::set_error_detail(true);
     let pairs = ExprPest::parse(Rule::full, code).map_err(|e| Error::PestError(Box::new(e)))?;
+    validate_integer_literals(pairs.clone())?;
     Ok(pairs.into())
+}
+
+fn validate_integer_literals(pairs: Pairs<'_, Rule>) -> Result<()> {
+    for pair in pairs {
+        if pair.as_rule() == Rule::int {
+            Value::parse_integer(pair.as_str()).map_err(|error| {
+                Error::ParseError(format!("invalid integer literal {}: {error}", pair.as_str()))
+            })?;
+        }
+        validate_integer_literals(pair.into_inner())?;
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod literal_tests {
+    use super::compile;
+
+    #[test]
+    fn rejects_malformed_integer_separators() {
+        for code in ["1__0", "1_", "0x_2A_", "0b1__0"] {
+            assert!(compile(code).is_err(), "{code} should be rejected");
+        }
+    }
+
+    #[test]
+    fn rejects_integer_overflow_without_panicking() {
+        assert!(compile("0x10000000000000000").is_err());
+        assert!(compile("9223372036854775808").is_err());
+    }
 }
 
 /// Main struct for parsing and evaluating expr programs
