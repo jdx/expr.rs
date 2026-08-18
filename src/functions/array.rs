@@ -1,7 +1,96 @@
 use crate::{bail, Environment, Value};
 use indexmap::IndexMap;
 
+fn add_sum(total: Value, value: Value) -> crate::Result<Value> {
+    match (total, value) {
+        (Value::Integer(total), Value::Integer(value)) => Ok(Value::Integer(total + value)),
+        (Value::Integer(total), Value::Float(value)) => Ok(Value::Float(total as f64 + value)),
+        (Value::Float(total), Value::Integer(value)) => Ok(Value::Float(total + value as f64)),
+        (Value::Float(total), Value::Float(value)) => Ok(Value::Float(total + value)),
+        _ => bail!("sum() values must be numbers"),
+    }
+}
+
 pub fn add_array_functions(env: &mut Environment) {
+    env.add_function("count", |c| {
+        if c.args.len() != 1 {
+            bail!("count() takes exactly one array argument");
+        }
+        let Value::Array(values) = &c.args[0] else {
+            bail!("count() takes an array as the first argument");
+        };
+        let mut count = 0;
+        if let Some(predicate) = c.predicate {
+            for value in values {
+                match c
+                    .env
+                    .run_with_binding(predicate, c.ctx, "#", value.clone())?
+                {
+                    Value::Bool(true) => count += 1,
+                    Value::Bool(false) => {}
+                    _ => bail!("count() predicate must return a boolean"),
+                }
+            }
+        } else {
+            for value in values {
+                match value {
+                    Value::Bool(true) => count += 1,
+                    Value::Bool(false) => {}
+                    _ => bail!("count() without a predicate requires booleans"),
+                }
+            }
+        }
+        Ok(Value::Integer(count))
+    });
+
+    env.add_function("sum", |c| {
+        if c.args.len() != 1 {
+            bail!("sum() takes exactly one array argument");
+        }
+        let Value::Array(values) = &c.args[0] else {
+            bail!("sum() takes an array as the first argument");
+        };
+        let mut total = Value::Integer(0);
+        for value in values {
+            let value = if let Some(predicate) = &c.predicate {
+                c.env
+                    .run_with_binding(predicate, c.ctx, "#", value.clone())?
+            } else {
+                value.clone()
+            };
+            total = add_sum(total, value)?;
+        }
+        Ok(total)
+    });
+
+    env.add_function("reduce", |c| {
+        if c.args.is_empty() || c.args.len() > 2 {
+            bail!("reduce() takes an array and optional initial value");
+        }
+        let Value::Array(values) = &c.args[0] else {
+            bail!("reduce() takes an array as the first argument");
+        };
+        let Some(predicate) = c.predicate else {
+            bail!("reduce() requires a predicate");
+        };
+        let (mut accumulator, start) = match c.args.get(1) {
+            Some(initial) => (initial.clone(), 0),
+            None => match values.first() {
+                Some(first) => (first.clone(), 1),
+                None => bail!("reduce() of an empty array requires an initial value"),
+            },
+        };
+        for value in &values[start..] {
+            accumulator = c.env.run_with_two_bindings(
+                predicate,
+                c.ctx,
+                ("#", value.clone()),
+                ("#acc", accumulator),
+            )?;
+        }
+        Ok(accumulator)
+    });
+
     env.add_function("all", |c| {
         if c.args.len() != 1 {
             bail!("all() takes exactly one argument and a predicate");
