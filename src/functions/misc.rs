@@ -39,8 +39,8 @@ pub fn add_misc_functions(env: &mut Environment) {
                     usize::try_from(*index).ok()
                 };
                 Ok(index
-                .and_then(|index| values.get(index))
-                .cloned()
+                    .and_then(|index| values.get(index))
+                    .cloned()
                     .unwrap_or_default())
             }
             (Value::Map(values), Value::String(key)) => {

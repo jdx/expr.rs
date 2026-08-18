@@ -75,21 +75,35 @@ pub fn add_string_functions(env: &mut Environment) {
     });
 
     env.add_function("replace", |c| {
-        if let (Value::String(s), Value::String(from), Value::String(to)) =
+        if c.args.len() != 3 && c.args.len() != 4 {
+            bail!("replace() takes three or four arguments");
+        }
+        let (Value::String(s), Value::String(from), Value::String(to)) =
             (&c.args[0], &c.args[1], &c.args[2])
-        {
-            Ok(s.replace(from, to).into())
-        } else {
-            bail!("replace() takes a string as the first argument and two strings to replace");
+        else {
+            bail!("replace() takes three strings");
+        };
+        match c.args.get(3) {
+            None => Ok(s.replace(from, to).into()),
+            Some(Value::Integer(count)) if *count < 0 => Ok(s.replace(from, to).into()),
+            Some(Value::Integer(count)) => Ok(s.replacen(from, to, *count as usize).into()),
+            Some(_) => bail!("replace() count must be an integer"),
         }
     });
 
     env.add_function("repeat", |c| {
-        if let (Value::String(s), Value::Integer(n)) = (&c.args[0], &c.args[1]) {
-            Ok(s.repeat(*n as usize + 1).into())
-        } else {
-            bail!("repeat() takes a string as the first argument and a number as the second argument");
+        if c.args.len() != 2 {
+            bail!("repeat() takes exactly two arguments");
         }
+        let (Value::String(s), Value::Integer(count)) = (&c.args[0], &c.args[1]) else {
+            bail!("repeat() takes a string and an integer");
+        };
+        let count = usize::try_from(*count)
+            .map_err(|_| crate::Error::ExprError("repeat() count cannot be negative".into()))?;
+        if count > 1_000_000 || s.len().checked_mul(count).is_none() {
+            bail!("repeat() memory budget exceeded");
+        }
+        Ok(s.repeat(count).into())
     });
 
     env.add_function("indexOf", |c| {

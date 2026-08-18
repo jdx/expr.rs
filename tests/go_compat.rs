@@ -59,6 +59,21 @@ fn json_comparison_preserves_integer_precision() {
 }
 
 #[test]
+fn rejects_go_expr_v1_17_8_error_corpus() {
+    let context = Context::default();
+    for (index, expression) in include_str!("../compat/errors.tsv").lines().enumerate() {
+        if expression.is_empty() || expression.starts_with('#') {
+            continue;
+        }
+        assert!(
+            eval(expression, &context).is_err(),
+            "compat/errors.tsv:{}: expected {expression:?} to fail",
+            index + 1
+        );
+    }
+}
+
+#[test]
 fn matches_go_expr_v1_17_8_corpus() {
     let context = Context::default();
     for (index, line) in include_str!("../compat/cases.tsv").lines().enumerate() {

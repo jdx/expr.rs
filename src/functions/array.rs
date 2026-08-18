@@ -325,13 +325,12 @@ pub fn add_array_functions(env: &mut Environment) {
         } else {
             false
         };
+        if let Err(error) = validate_sort_values(a.iter()) {
+            bail!("sort() {error}");
+        }
         let mut result = a.clone();
         result.sort_by(|a, b| {
-            let cmp = match (a, b) {
-                (Value::Integer(a), Value::Integer(b)) => a.cmp(b),
-                (Value::String(a), Value::String(b)) => a.cmp(b),
-                (a, b) => a.to_string().cmp(&b.to_string()),
-            };
+            let cmp = compare_sort_values(a, b);
             if desc {
                 cmp.reverse()
             } else {
@@ -368,12 +367,11 @@ pub fn add_array_functions(env: &mut Environment) {
                 .run_with_binding(predicate, c.ctx, "#", value.clone())?;
             keyed.push((key, value.clone()));
         }
+        if let Err(error) = validate_sort_values(keyed.iter().map(|(key, _)| key)) {
+            bail!("sortBy() {error}");
+        }
         keyed.sort_by(|(a, _), (b, _)| {
-            let cmp = match (a, b) {
-                (Value::Integer(a), Value::Integer(b)) => a.cmp(b),
-                (Value::String(a), Value::String(b)) => a.cmp(b),
-                (a, b) => a.to_string().cmp(&b.to_string()),
-            };
+            let cmp = compare_sort_values(a, b);
             if desc {
                 cmp.reverse()
             } else {
@@ -382,4 +380,41 @@ pub fn add_array_functions(env: &mut Environment) {
         });
         Ok(keyed.into_iter().map(|(_, v)| v).collect::<Vec<_>>().into())
     });
+}
+
+fn validate_sort_values<'a>(values: impl Iterator<Item = &'a Value>) -> Result<(), String> {
+    let mut kind = None;
+    for value in values {
+        let value_kind = match value {
+            Value::Integer(_) => 0,
+            Value::Float(value) if value.is_nan() => {
+                return Err("cannot compare NaN values".to_string());
+            }
+            Value::Float(_) => 0,
+            Value::String(_) => 1,
+            _ => return Err("values must all be numbers or all be strings".to_string()),
+        };
+        if kind.is_some_and(|kind| kind != value_kind) {
+            return Err("values must all be numbers or all be strings".to_string());
+        }
+        kind = Some(value_kind);
+    }
+    Ok(())
+}
+
+fn compare_sort_values(left: &Value, right: &Value) -> std::cmp::Ordering {
+    match (left, right) {
+        (Value::Integer(left), Value::Integer(right)) => left.cmp(right),
+        (Value::Float(left), Value::Float(right)) => left
+            .partial_cmp(right)
+            .unwrap_or(std::cmp::Ordering::Equal),
+        (Value::Integer(left), Value::Float(right)) => (*left as f64)
+            .partial_cmp(right)
+            .unwrap_or(std::cmp::Ordering::Equal),
+        (Value::Float(left), Value::Integer(right)) => left
+            .partial_cmp(&(*right as f64))
+            .unwrap_or(std::cmp::Ordering::Equal),
+        (Value::String(left), Value::String(right)) => left.cmp(right),
+        _ => unreachable!("sort values validated before comparison"),
+    }
 }

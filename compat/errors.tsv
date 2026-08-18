@@ -1,0 +1,7 @@
+# Expressions that both Go expr v1.17.8 and expr.rs must reject.
+true and 1
+1 ? 2 : 3
+reduce([], #acc + #)
+repeat("x", -1)
+sort([1, "2"])
+sort([1, "2", 3])

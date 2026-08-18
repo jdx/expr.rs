@@ -340,7 +340,7 @@ fn string_functions() -> Result<()> {
         "replace(\"foo bar foo\", \"foo\", \"baz\")",
         r#""baz bar baz""#
     );
-    test_old!(r#"repeat("Hi", 2)"#, r#""HiHiHi""#);
+    test_old!(r#"repeat("Hi", 2)"#, r#""HiHi""#);
     test_old!("indexOf(\"foo bar foo\", \"bar\")", "4");
     test_old!("lastIndexOf(\"foo bar foo\", \"foo\")", "8");
     test_old!(r#"hasPrefix("HelloWorld", "Hello")"#, "true");
