@@ -86,28 +86,31 @@ impl Environment<'_> {
     ) -> Result<Value> {
         let value = self.eval_expr(ctx, node)?;
         let result = match operator {
-            PostfixOperator::Index { idx, optional } => match self.eval_index_key(ctx, idx)? {
-                Value::Integer(idx) => match value {
-                    Value::Array(arr) => {
-                        let idx = i64_to_idx(idx, arr.len());
+            PostfixOperator::Index { idx, optional } => {
+                let key = self.eval_index_key(ctx, idx)?;
+                match (&key, value) {
+                    (Value::Integer(idx), Value::Array(arr)) => {
+                        let idx = i64_to_idx(*idx, arr.len());
                         arr.get(idx).cloned().unwrap_or(Value::Nil)
                     }
-                    Value::Bytes(bytes) => {
-                        let idx = i64_to_idx(idx, bytes.len());
+                    (Value::Integer(idx), Value::Bytes(bytes)) => {
+                        let idx = i64_to_idx(*idx, bytes.len());
                         bytes
                             .get(idx)
                             .map(|byte| Value::Integer((*byte).into()))
                             .unwrap_or(Value::Nil)
                     }
-                    _ if *optional => Value::Nil,
-                    _ => bail!("Invalid operand for operator []"),
-                },
-                Value::String(key) => match value {
-                    Value::Map(map) => map.get(&key).cloned().unwrap_or(Value::Nil),
-                    _ if *optional => Value::Nil,
-                    _ => bail!("Invalid operand for operator []"),
-                },
-                v => bail!("Invalid operand for operator []: {v:?}"),
+                    (Value::String(key), Value::Map(map)) => {
+                        map.get(key).cloned().unwrap_or(Value::Nil)
+                    }
+                    (key, Value::KeyedMap(map)) => map
+                        .into_iter()
+                        .find(|(candidate, _)| crate::ast::operator::values_equal(key, candidate))
+                        .map(|(_, value)| value)
+                        .unwrap_or(Value::Nil),
+                    (_, _) if *optional => Value::Nil,
+                    _ => bail!("Invalid operand for operator []: {key:?}"),
+                }
             },
             PostfixOperator::Range(start, end) => match value {
                 Value::Array(arr) => {

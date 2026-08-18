@@ -27,6 +27,7 @@ pub fn add_misc_functions(env: &mut Environment) {
             Value::Weekday(_) => "time.Weekday",
             Value::Array(_) => "array",
             Value::Map(_) => "map",
+            Value::KeyedMap(_) => "map",
         };
         Ok(Value::from(name))
     });
@@ -65,7 +66,12 @@ pub fn add_misc_functions(env: &mut Environment) {
             (Value::Map(values), Value::String(key)) => {
                 Ok(values.get(key).cloned().unwrap_or_default())
             }
-            _ => bail!("get() takes an array or bytes and integer, or a map and string"),
+            (Value::KeyedMap(values), key) => Ok(values
+                .iter()
+                .find(|(candidate, _)| crate::ast::operator::values_equal(candidate, key))
+                .map(|(_, value)| value.clone())
+                .unwrap_or_default()),
+            _ => bail!("get() takes an array or bytes and integer, or a map and key"),
         }
     });
 
@@ -94,24 +100,42 @@ pub fn add_misc_functions(env: &mut Environment) {
                 .map(|(key, value)| Value::Array(vec![Value::from(key), value]))
                 .collect(),
         )),
+        Value::KeyedMap(values) => Ok(Value::Array(
+            values
+                .into_iter()
+                .map(|(key, value)| Value::Array(vec![key, value]))
+                .collect(),
+        )),
         _ => bail!("toPairs() takes a map as the argument"),
     });
     env.add_function("fromPairs", |call| match one_argument("fromPairs", call.args)? {
         Value::Array(pairs) => {
-            let mut values = IndexMap::new();
+            let mut values = Vec::new();
             for pair in pairs {
                 match pair {
                     Value::Array(pair) if pair.len() == 2 => {
                         let mut pair = pair.into_iter();
-                        let Value::String(key) = pair.next().expect("length checked") else {
-                            bail!("fromPairs() pair keys must be strings");
-                        };
-                        values.insert(key, pair.next().expect("length checked"));
+                        let key = pair.next().expect("length checked");
+                        let value = pair.next().expect("length checked");
+                        if let Some((_, existing)) = values.iter_mut().find(|(candidate, _)| {
+                            crate::ast::operator::values_equal(candidate, &key)
+                        }) {
+                            *existing = value;
+                        } else {
+                            values.push((key, value));
+                        }
                     }
                     _ => bail!("fromPairs() expects an array of two-element arrays"),
                 }
             }
-            Ok(Value::Map(values))
+            if values.iter().all(|(key, _)| matches!(key, Value::String(_))) {
+                Ok(Value::Map(values.into_iter().map(|(key, value)| {
+                    let Value::String(key) = key else { unreachable!("checked") };
+                    (key, value)
+                }).collect::<IndexMap<_, _>>()))
+            } else {
+                Ok(Value::KeyedMap(values))
+            }
         }
         _ => bail!("fromPairs() takes an array as the argument"),
     });

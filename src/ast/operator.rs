@@ -1,5 +1,5 @@
 use crate::ast::node::Node;
-use crate::Value::{Array, Bool, DateTime, Duration, Float, Integer, Map, Month, String, Weekday};
+use crate::Value::{Array, Bool, DateTime, Duration, Float, Integer, KeyedMap, Map, Month, String, Weekday};
 use crate::{bail, Result, Rule};
 use crate::{ContextProvider, Environment, Value};
 use log::trace;
@@ -63,7 +63,7 @@ impl From<Pair<'_, Rule>> for Operator {
     }
 }
 
-fn values_equal(left: &Value, right: &Value) -> bool {
+pub(crate) fn values_equal(left: &Value, right: &Value) -> bool {
     match (left, right) {
         (Integer(left), Float(right)) => *left as f64 == *right,
         (Float(left), Integer(right)) => *left == *right as f64,
@@ -80,6 +80,15 @@ fn values_equal(left: &Value, right: &Value) -> bool {
                     right
                         .get(key)
                         .is_some_and(|right| values_equal(left, right))
+                })
+        }
+        (KeyedMap(left), KeyedMap(right)) => {
+            left.len() == right.len()
+                && left.iter().all(|(left_key, left_value)| {
+                    right.iter().any(|(right_key, right_value)| {
+                        values_equal(left_key, right_key)
+                            && values_equal(left_value, right_value)
+                    })
                 })
         }
         _ => left == right,
@@ -241,6 +250,10 @@ impl Environment<'_> {
             Operator::And | Operator::Or => unreachable!("handled before evaluating right operand"),
             Operator::In => match (left, right) {
                 (String(left), Map(right)) => right.contains_key(&left).into(),
+                (left, KeyedMap(right)) => right
+                    .iter()
+                    .any(|(key, _)| values_equal(&left, key))
+                    .into(),
                 (left, Array(right)) => right
                     .iter()
                     .any(|right| values_equal(&left, right))
@@ -249,7 +262,11 @@ impl Environment<'_> {
             },
             Operator::NotIn => match (left, right) {
                 (String(left), Map(right)) => (!right.contains_key(&left)).into(),
-                (left, Array(right)) => (!right.contains(&left)).into(),
+                (left, KeyedMap(right)) => (!right
+                    .iter()
+                    .any(|(key, _)| values_equal(&left, key)))
+                    .into(),
+                (left, Array(right)) => (!right.iter().any(|right| values_equal(&left, right))).into(),
                 _ => bail!("Invalid operands for operator {operator}"),
             },
             Operator::Contains => match (left, right) {

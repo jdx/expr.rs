@@ -29,6 +29,12 @@ fn json_value(value: ExprValue) -> JsonValue {
                 .map(|(key, value)| (key, json_value(value)))
                 .collect::<Map<_, _>>(),
         ),
+        ExprValue::KeyedMap(values) => JsonValue::Array(
+            values
+                .into_iter()
+                .map(|(key, value)| JsonValue::Array(vec![json_value(key), json_value(value)]))
+                .collect(),
+        ),
     }
 }
 

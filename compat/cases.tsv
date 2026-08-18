@@ -164,3 +164,12 @@ date("2023-08-04").In(timezone("Europe/Zurich")).Format("MST -0700 Z0700")	"CEST
 date("4 8 2023 3:6:7 +0230", "2 1 2006 3:4:5 -0700")	"2023-08-04T03:06:07+02:30"
 date("4 Aug 2023 UTC", "2 Jan 2006 MST")	"2023-08-04T00:00:00Z"
 duration("1h") < duration("2h")	true
+get(fromPairs([[1, "one"], [2, "two"]]), 2)	"two"
+fromPairs([[1, "one"]])[1]	"one"
+1 in fromPairs([[1, "one"]])	true
+keys(fromPairs([[1, "one"]]))	[1]
+values(fromPairs([[1, "one"]]))	["one"]
+len(fromPairs([[1, "one"]]))	1
+string(fromPairs([[10, "ten"], [2, "two"], [1, "one"]]))	"map[1:one 2:two 10:ten]"
+string(fromPairs([[true, "yes"], [false, "no"]]))	"map[false:no true:yes]"
+string(fromPairs([[2.5, "b"], [1.5, "a"]]))	"map[1.5:a 2.5:b]"

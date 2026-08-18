@@ -1,4 +1,4 @@
-use crate::{bail, Result, Value};
+use crate::{bail, Error, Result, Value};
 use indexmap::IndexMap;
 use std::fmt::Display;
 
@@ -99,6 +99,9 @@ impl TryFrom<Value> for Context {
     fn try_from(value: Value) -> Result<Self> {
         match value {
             Value::Map(values) => Ok(Self(values)),
+            Value::KeyedMap(_) => Err(Error::ExprError(
+                "context keys must be strings".to_string(),
+            )),
             value => bail!("context must be a map, got {value:?}"),
         }
     }
