@@ -2,6 +2,8 @@ pub mod array;
 pub mod bitwise;
 pub mod convert;
 pub mod json;
+pub mod misc;
+pub mod number;
 pub mod string;
 
 use crate::Result;
