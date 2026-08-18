@@ -2,6 +2,24 @@
 
 Implementation of [expr](https://expr-lang.org/) in rust.
 
+## Project status
+
+`expr-lang` is actively maintained for use in [mise](https://mise.jdx.dev/) and
+other Rust applications. The next release will be v2.
+
+Language support is not yet complete. The v2 goal is source-level compatibility
+with the Go implementation of expr for the syntax and built-ins this crate
+supports. Differences in those supported areas are treated as bugs unless they
+are documented. See the [issue tracker](https://github.com/jdx/expr.rs/issues)
+for known gaps.
+
+Evaluation is currently tree-walking. Bytecode compilation is not planned for
+v2; correctness, compatibility, and a small embeddable API take priority. A
+bytecode backend could be considered later if real-world profiling shows that
+evaluation itself is a bottleneck.
+
+See [MIGRATION.md](MIGRATION.md) when upgrading from v1 to v2.
+
 ## Usage
 
 ```rust
@@ -34,7 +52,7 @@ fn main() {
 
 ```toml
 [dependencies]
-expr-lang = { version = "0.3", features = ["serde"] }
+expr-lang = { version = "1", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 ```
 
@@ -42,7 +60,7 @@ serde = { version = "1.0", features = ["derive"] }
 use expr::{Value, to_value, from_value};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 struct Foo {
     a: i64,
     b: String,
@@ -55,9 +73,9 @@ fn main() {
     };
 
     let value: Value = to_value(&foo).unwrap();
-    assert_eq!(value, Value::Map(IndexMap::from([
-        ("a".to_string(), Value::Integer(1)),
-    ])));
+    let map = value.as_map().unwrap();
+    assert_eq!(map.get("a"), Some(&Value::Integer(1)));
+    assert_eq!(map.get("b"), Some(&Value::String("hello".to_string())));
     assert_eq!(from_value::<Foo>(value).unwrap(), foo);
 }
 ```
@@ -66,7 +84,7 @@ fn main() {
 
 ```toml
 [dependencies]
-expr-lang = { version = "0.3", features = ["serde"] }
+expr-lang = { version = "1", features = ["serde"] }
 serde_json = "1.0"
 ```
 
@@ -81,9 +99,9 @@ fn main() {
     }"#;
 
     let value: Value = from_str(json).unwrap();
-    assert_eq!(value, Value::Map(IndexMap::from([
-        ("a".to_string(), Value::Integer(1)),
-    ])));
+    let map = value.as_map().unwrap();
+    assert_eq!(map.get("a"), Some(&Value::Integer(1)));
+    assert_eq!(map.get("b"), Some(&Value::String("hello".to_string())));
     assert_eq!(to_string(&value).unwrap(), r#"{\"a\":1,\"b\":\"hello\"}"#);
 }
 ```
