@@ -38,6 +38,8 @@ pub enum Operator {
     Or,
     #[strum(serialize = "in")]
     In,
+    #[strum(serialize = "not in")]
+    NotIn,
     #[strum(serialize = "contains")]
     Contains,
     #[strum(serialize = "startsWith")]
@@ -197,6 +199,11 @@ impl Environment<'_> {
                     .iter()
                     .any(|right| values_equal(&left, right))
                     .into(),
+                _ => bail!("Invalid operands for operator {operator}"),
+            },
+            Operator::NotIn => match (left, right) {
+                (String(left), Map(right)) => (!right.contains_key(&left)).into(),
+                (left, Array(right)) => (!right.contains(&left)).into(),
                 _ => bail!("Invalid operands for operator {operator}"),
             },
             Operator::Contains => match (left, right) {

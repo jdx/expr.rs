@@ -153,7 +153,11 @@ impl From<Pair<'_, Rule>> for Node {
                     .step_by(2)
                     .zip(vals.into_inner().skip(1).step_by(2))
                 {
-                    let key = key.as_str().to_string();
+                    let key = match key.as_rule() {
+                        Rule::ident => key.as_str().to_string(),
+                        Rule::string => Value::from(key).as_string().unwrap().to_string(),
+                        rule => unreachable!("Unexpected map key: {rule:?}"),
+                    };
                     map.insert(key, val.into_inner().into());
                 }
                 Node::Value(Value::Map(map))

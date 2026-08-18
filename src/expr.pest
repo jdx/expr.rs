@@ -4,7 +4,7 @@ stmt    =  { "let" ~ ident ~ "=" ~ expr ~ ";" }
 expr    =  { prefix? ~ term ~ postfix* ~ (infix ~ prefix? ~ term ~ postfix*)* }
 
 prefix  = _{ negation_op | sign_op }
-infix   = _{ exponent_op | multiplication_op | addition_op | comparison_op | equal_op | and_op | or_op | string_op }
+infix   = _{ exponent_op | multiplication_op | addition_op | comparison_op | equal_op | and_op | or_op | not_in_op | string_op }
 postfix = _{ ternary | range_start_op | range_end_op | opt_membership_op | opt_index_op | membership_op | index_op | default_op | pipe }
 
 func              =  { ident ~ "(" ~ (expr ~ ("," ~ expr)*)? ~ (","? ~ predicate)? ~ ")" }
@@ -31,18 +31,29 @@ or_op             =  { "||" | "or" }
 string_op         =  { "in" | "contains" | "startsWith" | "endsWith" | "matches" }
 
 value            =  { string | string_multiline | decimal | int | bool | nil }
-array            =  { "[" ~ (expr ~ ("," ~ expr)*)? ~ "]" }
-map              =  { "{" ~ (ident ~ ":" ~ expr ~ ("," ~ ident ~ ":" ~ expr)*)? ~ "}" }
+array            =  { "[" ~ (expr ~ ("," ~ expr)* ~ ","?)? ~ "]" }
+map              =  { "{" ~ (map_key ~ ":" ~ expr ~ ("," ~ map_key ~ ":" ~ expr)* ~ ","?)? ~ "}" }
+map_key          = _{ ident | string }
 range            =  { value ~ ".." ~ value }
 string           = ${ ("\"" ~ inner_double ~ "\"" | "'" ~ inner_single ~ "'") }
 string_multiline = ${ "`" ~ inner_multiline ~ "`" }
 inner_single     = @{ char_single* }
 inner_double     = @{ char_double* }
 inner_multiline  = @{ (!"`" ~ ANY)* }
-int              = @{ ASCII_DIGIT+ ~ (ASCII_DIGIT | "_")* }
+int              = @{
+    "0x" ~ "_"? ~ ASCII_HEX_DIGIT ~ (ASCII_HEX_DIGIT | "_")*
+  | "0X" ~ "_"? ~ ASCII_HEX_DIGIT ~ (ASCII_HEX_DIGIT | "_")*
+  | "0o" ~ "_"? ~ ASCII_OCT_DIGIT ~ (ASCII_OCT_DIGIT | "_")*
+  | "0O" ~ "_"? ~ ASCII_OCT_DIGIT ~ (ASCII_OCT_DIGIT | "_")*
+  | "0b" ~ "_"? ~ ("0" | "1") ~ ("0" | "1" | "_")*
+  | "0B" ~ "_"? ~ ("0" | "1") ~ ("0" | "1" | "_")*
+  | ASCII_DIGIT+ ~ (ASCII_DIGIT | "_")*
+}
 bool             =  { "true" | "false" }
 nil              =  { "nil" }
-decimal          = @{ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
+decimal          = @{ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ | "." ~ ASCII_DIGIT+ }
+
+not_in_op        = @{ "not" ~ WHITESPACE+ ~ "in" }
 
 ident         = @{ "#" | (("$" | ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")*) }
 char_single   =  {
