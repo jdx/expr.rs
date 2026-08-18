@@ -207,6 +207,13 @@ impl<'a> Environment<'a> {
                     (start, end) => bail!("invalid range: {start:?}..{end:?}"),
                 }
             }
+            Node::Conditional { condition, consequent, alternative } => {
+                match self.eval_expr(ctx, condition)? {
+                    Value::Bool(true) => self.run(consequent, ctx)?,
+                    Value::Bool(false) => self.run(alternative, ctx)?,
+                    value => bail!("Invalid condition for if: {value:?}"),
+                }
+            }
         };
         Ok(value)
     }
