@@ -1,10 +1,10 @@
-use std::iter::once;
 use crate::ast::node::Node;
 use crate::Rule;
 use crate::{bail, Result};
-use crate::{Context, Environment, Value};
+use crate::{ContextProvider, Environment, Value};
 use log::trace;
 use pest::iterators::Pair;
+use std::iter::once;
 
 #[derive(Debug, Clone, strum::Display)]
 pub enum PostfixOperator {
@@ -69,7 +69,7 @@ impl From<Pair<'_, Rule>> for PostfixOperator {
 impl Environment<'_> {
     pub fn eval_postfix_operator(
         &self,
-        ctx: &Context,
+        ctx: &dyn ContextProvider,
         operator: PostfixOperator,
         node: Node,
     ) -> Result<Value> {
@@ -116,7 +116,8 @@ impl Environment<'_> {
                     predicate,
                 } = *func
                 {
-                    let args = args.into_iter()
+                    let args = args
+                        .into_iter()
                         .map(|arg| self.eval_expr(ctx, arg))
                         .chain(once(Ok(value)))
                         .collect::<Result<Vec<Value>>>()?;
@@ -130,7 +131,7 @@ impl Environment<'_> {
         Ok(result)
     }
 
-    fn eval_index_key(&self, ctx: &Context, idx: Node) -> Result<Value> {
+    fn eval_index_key(&self, ctx: &dyn ContextProvider, idx: Node) -> Result<Value> {
         match idx {
             Node::Value(v) => Ok(v),
             Node::Ident(id) => Ok(Value::String(id)),

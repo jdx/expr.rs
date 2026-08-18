@@ -2,8 +2,8 @@ use crate::ast::node::Node;
 use crate::ast::program::Program;
 use crate::eval::Environment;
 use crate::functions::ExprCall;
+use crate::{ContextProvider, Error, Result, Value};
 use crate::{ExprPest, Rule};
-use crate::{Context, Error, Result, Value};
 use pest::Parser as PestParser;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
@@ -83,7 +83,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Run a compiled expr program
-    pub fn run(&self, program: Program, ctx: &Context) -> Result<Value> {
+    pub fn run(&self, program: Program, ctx: &dyn ContextProvider) -> Result<Value> {
         self.env.run(program, ctx)
     }
 
@@ -97,11 +97,11 @@ impl<'a> Parser<'a> {
     /// let ctx = Context::default();
     /// assert_eq!(p.eval("1 + 2", &ctx).unwrap().to_string(), "3");
     /// ```
-    pub fn eval(&self, code: &str, ctx: &Context) -> Result<Value> {
+    pub fn eval(&self, code: &str, ctx: &dyn ContextProvider) -> Result<Value> {
         self.env.eval(code, ctx)
     }
 
-    pub fn eval_expr(&self, ctx: &Context, node: Node) -> Result<Value> {
+    pub fn eval_expr(&self, ctx: &dyn ContextProvider, node: Node) -> Result<Value> {
         self.env.eval_expr(ctx, node)
     }
 }

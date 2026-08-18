@@ -1,7 +1,7 @@
 use crate::ast::node::Node;
 use crate::Value::{Array, Bool, Float, Integer, Map, String};
 use crate::{bail, Result, Rule};
-use crate::{Context, Environment, Value};
+use crate::{ContextProvider, Environment, Value};
 use log::trace;
 use pest::iterators::Pair;
 use std::str::FromStr;
@@ -84,7 +84,7 @@ fn values_equal(left: &Value, right: &Value) -> bool {
 impl Environment<'_> {
     pub fn eval_operator(
         &self,
-        ctx: &Context,
+        ctx: &dyn ContextProvider,
         operator: Operator,
         left: Node,
         right: Node,

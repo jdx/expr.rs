@@ -1,4 +1,4 @@
-use crate::{Context, Value};
+use crate::{Context, ContextProvider, Value};
 use crate::{Environment, eval};
 #[allow(deprecated)]
 use crate::Parser;
@@ -88,6 +88,51 @@ fn logical_operators_are_strict_and_short_circuit() -> Result<()> {
     assert!(eval("1 or true", &context).is_err());
     assert_eq!(eval("false and unknown", &context)?, Value::Bool(false));
     assert_eq!(eval("true or unknown", &context)?, Value::Bool(true));
+    Ok(())
+}
+
+#[test]
+fn default_environment_includes_builtins() -> Result<()> {
+    let context = Context::default();
+    assert_eq!(
+        Environment::default().eval("len([1, 2])", &context)?,
+        Value::Integer(2)
+    );
+    #[allow(deprecated)]
+    let parser = Parser::default();
+    assert_eq!(parser.eval("string(3)", &context)?, Value::from("3"));
+    Ok(())
+}
+
+#[test]
+fn context_is_materialized_only_for_env() -> Result<()> {
+    use std::cell::Cell;
+
+    struct CountingContext {
+        context: Context,
+        materializations: Cell<usize>,
+    }
+
+    impl ContextProvider for CountingContext {
+        fn get(&self, key: &str) -> Option<&Value> {
+            self.context.get(key)
+        }
+
+        fn to_context(&self) -> Context {
+            self.materializations
+                .set(self.materializations.get() + 1);
+            self.context.clone()
+        }
+    }
+
+    let context = CountingContext {
+        context: Context::from_iter([("answer", 42)]),
+        materializations: Cell::new(0),
+    };
+    assert_eq!(eval("answer", &context)?, Value::Integer(42));
+    assert_eq!(context.materializations.get(), 0);
+    assert_eq!(eval("$env.answer", &context)?, Value::Integer(42));
+    assert_eq!(context.materializations.get(), 1);
     Ok(())
 }
 
