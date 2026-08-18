@@ -53,6 +53,9 @@ pub enum Operator {
 impl From<Pair<'_, Rule>> for Operator {
     fn from(pair: Pair<Rule>) -> Self {
         trace!("[operator] {pair:?}");
+        if pair.as_rule() == Rule::not_in_op {
+            return Operator::NotIn;
+        }
         match pair.as_str() {
             "**" => Operator::Pow,
             op => Operator::from_str(op).unwrap_or_else(|_| unreachable!("Invalid operator {op}")),

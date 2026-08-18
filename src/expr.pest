@@ -41,13 +41,13 @@ inner_single     = @{ char_single* }
 inner_double     = @{ char_double* }
 inner_multiline  = @{ (!"`" ~ ANY)* }
 int              = @{
-    "0x" ~ "_"? ~ ASCII_HEX_DIGIT ~ (ASCII_HEX_DIGIT | "_")*
-  | "0X" ~ "_"? ~ ASCII_HEX_DIGIT ~ (ASCII_HEX_DIGIT | "_")*
-  | "0o" ~ "_"? ~ ASCII_OCT_DIGIT ~ (ASCII_OCT_DIGIT | "_")*
-  | "0O" ~ "_"? ~ ASCII_OCT_DIGIT ~ (ASCII_OCT_DIGIT | "_")*
-  | "0b" ~ "_"? ~ ("0" | "1") ~ ("0" | "1" | "_")*
-  | "0B" ~ "_"? ~ ("0" | "1") ~ ("0" | "1" | "_")*
-  | ASCII_DIGIT+ ~ (ASCII_DIGIT | "_")*
+    "0x" ~ "_"? ~ ASCII_HEX_DIGIT ~ ("_"? ~ ASCII_HEX_DIGIT)*
+  | "0X" ~ "_"? ~ ASCII_HEX_DIGIT ~ ("_"? ~ ASCII_HEX_DIGIT)*
+  | "0o" ~ "_"? ~ ASCII_OCT_DIGIT ~ ("_"? ~ ASCII_OCT_DIGIT)*
+  | "0O" ~ "_"? ~ ASCII_OCT_DIGIT ~ ("_"? ~ ASCII_OCT_DIGIT)*
+  | "0b" ~ "_"? ~ ("0" | "1") ~ ("_"? ~ ("0" | "1"))*
+  | "0B" ~ "_"? ~ ("0" | "1") ~ ("_"? ~ ("0" | "1"))*
+  | ASCII_DIGIT ~ ("_"? ~ ASCII_DIGIT)*
 }
 bool             =  { "true" | "false" }
 nil              =  { "nil" }
