@@ -30,11 +30,19 @@ pub fn add_misc_functions(env: &mut Environment) {
             bail!("get() takes exactly two arguments");
         }
         match (&call.args[0], &call.args[1]) {
-            (Value::Array(values), Value::Integer(index)) => Ok(usize::try_from(*index)
-                .ok()
+            (Value::Array(values), Value::Integer(index)) => {
+                let index = if *index < 0 {
+                    usize::try_from(index.unsigned_abs())
+                        .ok()
+                        .and_then(|offset| values.len().checked_sub(offset))
+                } else {
+                    usize::try_from(*index).ok()
+                };
+                Ok(index
                 .and_then(|index| values.get(index))
                 .cloned()
-                .unwrap_or_default()),
+                    .unwrap_or_default())
+            }
             (Value::Map(values), Value::String(key)) => {
                 Ok(values.get(key).cloned().unwrap_or_default())
             }
