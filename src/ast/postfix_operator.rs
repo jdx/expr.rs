@@ -81,6 +81,13 @@ impl Environment<'_> {
                         let idx = i64_to_idx(idx, arr.len());
                         arr.get(idx).cloned().unwrap_or(Value::Nil)
                     }
+                    Value::Bytes(bytes) => {
+                        let idx = i64_to_idx(idx, bytes.len());
+                        bytes
+                            .get(idx)
+                            .map(|byte| Value::Integer((*byte).into()))
+                            .unwrap_or(Value::Nil)
+                    }
                     _ if *optional => Value::Nil,
                     _ => bail!("Invalid operand for operator []"),
                 },
@@ -93,10 +100,13 @@ impl Environment<'_> {
             },
             PostfixOperator::Range(start, end) => match value {
                 Value::Array(arr) => {
-                    let start = i64_to_idx(start.unwrap_or(0), arr.len());
-                    let end = i64_to_idx(end.unwrap_or(arr.len() as i64), arr.len());
-                    let result = arr[start..end].to_vec();
+                    let (start, end) = slice_bounds(*start, *end, arr.len());
+                    let result = arr.get(start..end).unwrap_or_default().to_vec();
                     Value::Array(result)
+                }
+                Value::Bytes(bytes) => {
+                    let (start, end) = slice_bounds(*start, *end, bytes.len());
+                    Value::Bytes(bytes.get(start..end).unwrap_or_default().to_vec())
                 }
                 _ => bail!("Invalid operand for operator []"),
             },
@@ -144,4 +154,18 @@ fn i64_to_idx(idx: i64, len: usize) -> usize {
     } else {
         idx as usize
     }
+}
+
+fn slice_idx(idx: i64, len: usize) -> usize {
+    if idx < 0 {
+        len.saturating_sub(idx.unsigned_abs() as usize)
+    } else {
+        usize::try_from(idx).unwrap_or(usize::MAX).min(len)
+    }
+}
+
+fn slice_bounds(start: Option<i64>, end: Option<i64>, len: usize) -> (usize, usize) {
+    let start = slice_idx(start.unwrap_or(0), len);
+    let end = slice_idx(end.unwrap_or(len as i64), len);
+    (start.min(end), end)
 }

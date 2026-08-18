@@ -40,6 +40,7 @@ impl<'de> Deserializer<'de> for ValueDeserializer {
             Value::Float(f) => visitor.visit_f64(f),
             Value::Bool(b) => visitor.visit_bool(b),
             Value::String(s) => visitor.visit_string(s),
+            Value::Bytes(bytes) => visitor.visit_byte_buf(bytes),
             Value::Array(a) => visitor.visit_seq(SeqDeserializer::new(a.into_iter())),
             Value::Map(m) => visitor.visit_map(MapDeserializer::new(m.into_iter())),
             Value::Nil => visitor.visit_unit(),
@@ -106,8 +107,8 @@ impl Serializer for ValueSerializer {
     }
 
     #[inline]
-    fn serialize_bytes(self, _v: &[u8]) -> Result<Self::Ok, Self::Error> {
-        Err(Error::SerializeError("Converting bytes to expr::Value is not supported".to_string()))
+    fn serialize_bytes(self, value: &[u8]) -> Result<Self::Ok, Self::Error> {
+        Ok(Value::Bytes(value.to_vec()))
     }
 
     // An absent optional is converted to Value::Nil.
@@ -493,6 +494,18 @@ mod tests {
     fn deserialize() {
         let json = test_json();
         assert_eq!(serde_json::from_str::<Value>(&json).unwrap(), test_value());
+    }
+
+    #[test]
+    fn json_integer_arrays_deserialize_as_arrays() {
+        assert_eq!(
+            serde_json::from_str::<Value>("[1, 2, 255]").unwrap(),
+            Value::Array(vec![1.into(), 2.into(), 255.into()])
+        );
+        assert_eq!(
+            serde_json::from_str::<Value>("[]").unwrap(),
+            Value::Array(Vec::new())
+        );
     }
 
     #[test]

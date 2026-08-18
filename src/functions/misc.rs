@@ -19,6 +19,7 @@ pub fn add_misc_functions(env: &mut Environment) {
             Value::Integer(_) => "int",
             Value::Float(_) => "float",
             Value::String(_) => "string",
+            Value::Bytes(_) => "array",
             Value::Array(_) => "array",
             Value::Map(_) => "map",
         };
@@ -43,10 +44,23 @@ pub fn add_misc_functions(env: &mut Environment) {
                     .cloned()
                     .unwrap_or_default())
             }
+            (Value::Bytes(values), Value::Integer(index)) => {
+                let index = if *index < 0 {
+                    usize::try_from(index.unsigned_abs())
+                        .ok()
+                        .and_then(|offset| values.len().checked_sub(offset))
+                } else {
+                    usize::try_from(*index).ok()
+                };
+                Ok(index
+                    .and_then(|index| values.get(index))
+                    .map(|value| Value::Integer((*value).into()))
+                    .unwrap_or_default())
+            }
             (Value::Map(values), Value::String(key)) => {
                 Ok(values.get(key).cloned().unwrap_or_default())
             }
-            _ => bail!("get() takes an array and integer or a map and string"),
+            _ => bail!("get() takes an array or bytes and integer, or a map and string"),
         }
     });
 
