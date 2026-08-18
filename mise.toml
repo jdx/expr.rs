@@ -4,6 +4,9 @@
 git-cliff = "latest"
 watchexec = "latest"
 
+[settings]
+cargo.binstall_native = true
+
 [tasks.lint]
 run = [
   "cargo clippy",
