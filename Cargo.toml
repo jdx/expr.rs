@@ -2,6 +2,7 @@
 name = "expr-lang"
 version = "1.1.1"
 edition = "2024"
+rust-version = "1.85"
 authors = ["@jdx"]
 license = "MIT"
 documentation = "https://docs.rs/expr-lang"
@@ -9,11 +10,16 @@ homepage = "https://github.com/jdx/expr.rs"
 repository = "https://github.com/jdx/expr.rs"
 description = "Implementation of expr language in Rust"
 include = [
+    "/CHANGELOG.md",
+    "/LICENSE",
+    "/README.md",
     "/compat/cases.tsv",
     "/compat/errors.tsv",
+    "/examples/**/*.rs",
     "/MIGRATION.md",
     "/src/**/*.pest",
     "/src/**/*.rs",
+    "/tests/**/*.rs",
 ]
 
 [features]

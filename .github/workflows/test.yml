@@ -18,6 +18,9 @@ jobs:
         with:
           shared-key: rust-${{ matrix.target }}
       - uses: jdx/mise-action@7e36c90d9ab29c415a2384db3006f3ec8a8cc654 # v4
-      - run: cargo build
-      - run: cargo test
+      - run: cargo build --all-features
+      - run: cargo test --all-features
       - run: mise lint
+      - run: cargo package
+      - run: rustup toolchain install 1.85.0 --profile minimal
+      - run: cargo +1.85.0 test --all-features

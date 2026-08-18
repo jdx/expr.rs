@@ -297,8 +297,8 @@ mod tests {
         let integer_val = value!(42);
         assert_eq!(integer_val, Value::Integer(42));
 
-        let float_val = value!(3.14);
-        assert_eq!(float_val, Value::Float(3.14));
+        let float_val = value!(3.125);
+        assert_eq!(float_val, Value::Float(3.125));
 
         let negative_val = value!(-10.5);
         assert_eq!(negative_val, Value::Float(-10.5));
@@ -362,7 +362,7 @@ mod tests {
             "boolean": true,
             "string": "hello",
             "nil": nil,
-            "number": 3.14,
+            "number": 3.125,
             "array": [1, 2, 3],
             "nested_map": {
                 "inner_key": "inner_value",
@@ -372,7 +372,7 @@ mod tests {
             ("boolean", Value::Bool(true)),
             ("string", Value::String("hello".to_string())),
             ("nil", Value::Nil),
-            ("number", Value::Float(3.14)),
+            ("number", Value::Float(3.125)),
             ("array", Value::from(vec![
                 Value::Integer(1),
                 Value::Integer(2),
@@ -390,7 +390,7 @@ mod tests {
         let bool_var = true;
         let string_var = "hello".to_string();
         let int_var = 42;
-        let float_var = 3.14;
+        let float_var = 3.125;
         let nil_var = Value::Nil;
         let array_var = vec![1, 2, 3];
         let map_var: IndexMap<String, Value> = IndexMap::from([
@@ -410,7 +410,7 @@ mod tests {
             ("bool", Value::from(true)),
             ("string", Value::from("hello")),
             ("int", Value::from(42)),
-            ("float", Value::from(3.14)),
+            ("float", Value::from(3.125)),
             ("nil", Value::Nil),
             ("array", Value::from(vec![
                 Value::from(1),

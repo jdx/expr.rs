@@ -202,7 +202,7 @@ impl From<Pairs<'_, Rule>> for Value {
 
 impl From<Pair<'_, Rule>> for Value {
     fn from(pair: Pair<Rule>) -> Self {
-        trace!("{:?} = {}", &pair.as_rule(), pair.as_str());
+        trace!("{:?} = {}", pair.as_rule(), pair.as_str());
         match pair.as_rule() {
             Rule::value => pair.into_inner().into(),
             Rule::nil => Value::Nil,

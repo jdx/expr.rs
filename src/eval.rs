@@ -165,7 +165,7 @@ impl<'a> Environment<'a> {
             Node::Ident(id) => {
                 if id == "$env" {
                     Value::Map(ctx.environment().0)
-                } else if let Some(value) = ctx.get(&id) {
+                } else if let Some(value) = ctx.get(id) {
                     value.clone()
                 } else if let Some(item) = ctx
                     .get("#")
@@ -183,7 +183,7 @@ impl<'a> Environment<'a> {
                 predicate,
             } => {
                 let args = args
-                    .into_iter()
+                    .iter()
                     .map(|e| self.eval_expr(ctx, e))
                     .collect::<Result<_>>()?;
                 self.eval_func(ctx, ident, args, predicate.as_deref())?
