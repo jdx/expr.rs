@@ -10,7 +10,7 @@ pub fn add_array_functions(env: &mut Environment) {
             for value in a {
                 let mut ctx = c.ctx.clone();
                 ctx.insert("#".to_string(), value.clone());
-                if let Value::Bool(false) = c.env.run(predicate.clone(), &ctx)? {
+                if let Value::Bool(false) = c.env.run(predicate, &ctx)? {
                     return Ok(false.into());
                 }
             }
@@ -28,7 +28,7 @@ pub fn add_array_functions(env: &mut Environment) {
             for value in a {
                 let mut ctx = c.ctx.clone();
                 ctx.insert("#".to_string(), value.clone());
-                if let Value::Bool(true) = c.env.run(predicate.clone(), &ctx)? {
+                if let Value::Bool(true) = c.env.run(predicate, &ctx)? {
                     return Ok(true.into());
                 }
             }
@@ -47,7 +47,7 @@ pub fn add_array_functions(env: &mut Environment) {
             for value in a {
                 let mut ctx = c.ctx.clone();
                 ctx.insert("#".to_string(), value.clone());
-                if let Value::Bool(true) = c.env.run(predicate.clone(), &ctx)? {
+                if let Value::Bool(true) = c.env.run(predicate, &ctx)? {
                     if found {
                         return Ok(false.into());
                     }
@@ -68,7 +68,7 @@ pub fn add_array_functions(env: &mut Environment) {
             for value in a {
                 let mut ctx = c.ctx.clone();
                 ctx.insert("#".to_string(), value.clone());
-                if let Value::Bool(true) = c.env.run(predicate.clone(), &ctx)? {
+                if let Value::Bool(true) = c.env.run(predicate, &ctx)? {
                     return Ok(false.into());
                 }
             }
@@ -87,7 +87,7 @@ pub fn add_array_functions(env: &mut Environment) {
             for value in a {
                 let mut ctx = c.ctx.clone();
                 ctx.insert("#".to_string(), value.clone());
-                result.push(c.env.run(predicate.clone(), &ctx)?);
+                result.push(c.env.run(predicate, &ctx)?);
             }
         } else {
             bail!("map() takes an array as the first argument");
@@ -104,7 +104,7 @@ pub fn add_array_functions(env: &mut Environment) {
             for value in a {
                 let mut ctx = c.ctx.clone();
                 ctx.insert("#".to_string(), value.clone());
-                if let Value::Bool(true) = c.env.run(predicate.clone(), &ctx)? {
+                if let Value::Bool(true) = c.env.run(predicate, &ctx)? {
                     result.push(value.clone());
                 }
             }
@@ -122,7 +122,7 @@ pub fn add_array_functions(env: &mut Environment) {
             for value in a {
                 let mut ctx = c.ctx.clone();
                 ctx.insert("#".to_string(), value.clone());
-                if let Value::Bool(true) = c.env.run(predicate.clone(), &ctx)? {
+                if let Value::Bool(true) = c.env.run(predicate, &ctx)? {
                     return Ok(value.clone());
                 }
             }
@@ -140,7 +140,7 @@ pub fn add_array_functions(env: &mut Environment) {
             for (i, value) in a.iter().enumerate() {
                 let mut ctx = c.ctx.clone();
                 ctx.insert("#".to_string(), value.clone());
-                if let Value::Bool(true) = c.env.run(predicate.clone(), &ctx)? {
+                if let Value::Bool(true) = c.env.run(predicate, &ctx)? {
                     return Ok(i.into());
                 }
             }
@@ -158,7 +158,7 @@ pub fn add_array_functions(env: &mut Environment) {
             for value in a.iter().rev() {
                 let mut ctx = c.ctx.clone();
                 ctx.insert("#".to_string(), value.clone());
-                if let Value::Bool(true) = c.env.run(predicate.clone(), &ctx)? {
+                if let Value::Bool(true) = c.env.run(predicate, &ctx)? {
                     return Ok(value.clone());
                 }
             }
@@ -176,7 +176,7 @@ pub fn add_array_functions(env: &mut Environment) {
             for (i, value) in a.iter().enumerate().rev() {
                 let mut ctx = c.ctx.clone();
                 ctx.insert("#".to_string(), value.clone());
-                if let Value::Bool(true) = c.env.run(predicate.clone(), &ctx)? {
+                if let Value::Bool(true) = c.env.run(predicate, &ctx)? {
                     return Ok(i.into());
                 }
             }
@@ -194,7 +194,7 @@ pub fn add_array_functions(env: &mut Environment) {
             for value in a {
                 let mut ctx = c.ctx.clone();
                 ctx.insert("#".to_string(), value.clone());
-                if let Some(key) = c.env.run(predicate.clone(), &ctx)?.as_string() {
+                if let Some(key) = c.env.run(predicate, &ctx)?.as_string() {
                     groups.entry(key.to_string()).or_insert_with(Vec::new).push(value.clone());
                 } else {
                     bail!("groupBy() predicate must return a string");
@@ -258,7 +258,7 @@ pub fn add_array_functions(env: &mut Environment) {
         for value in a {
             let mut ctx = c.ctx.clone();
             ctx.insert("#".to_string(), value.clone());
-            let key = c.env.run(predicate.clone(), &ctx)?;
+            let key = c.env.run(predicate, &ctx)?;
             keyed.push((key, value.clone()));
         }
         keyed.sort_by(|(a, _), (b, _)| {

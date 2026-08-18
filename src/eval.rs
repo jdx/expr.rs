@@ -9,7 +9,7 @@ use std::fmt;
 use std::fmt::{Debug, Formatter};
 
 /// Run a compiled expr program, using the default environment
-pub fn run(program: Program, ctx: &Context) -> Result<Value> {
+pub fn run(program: &Program, ctx: &Context) -> Result<Value> {
     DEFAULT_ENVIRONMENT.run(program, ctx)
 }
 
@@ -100,13 +100,13 @@ impl<'a> Environment<'a> {
     }
 
     /// Run a compiled expr program
-    pub fn run(&self, program: Program, ctx: &Context) -> Result<Value> {
+    pub fn run(&self, program: &Program, ctx: &Context) -> Result<Value> {
         let mut ctx = ctx.clone();
         ctx.insert("$env".to_string(), Value::Map(ctx.0.clone()));
-        for (id, expr) in program.lines {
+        for (id, expr) in &program.lines {
             ctx.insert(id, self.eval_expr(&ctx, expr)?);
         }
-        self.eval_expr(&ctx, program.expr)
+        self.eval_expr(&ctx, &program.expr)
     }
 
     /// Compile and run an expr program in one step
@@ -121,19 +121,19 @@ impl<'a> Environment<'a> {
     /// ```
     pub fn eval(&self, code: &str, ctx: &Context) -> Result<Value> {
         let program = compile(code)?;
-        self.run(program, ctx)
+        self.run(&program, ctx)
     }
 
-    pub fn eval_expr(&self, ctx: &Context, node: Node) -> Result<Value> {
+    pub fn eval_expr(&self, ctx: &Context, node: &Node) -> Result<Value> {
         let value = match node {
-            Node::Value(value) => value,
+            Node::Value(value) => value.clone(),
             Node::Ident(id) => {
                 if let Some(value) = ctx.get(&id) {
                     value.clone()
                 } else if let Some(item) = ctx
                     .get("#")
                     .and_then(|o| o.as_map())
-                    .and_then(|m| m.get(&id))
+                    .and_then(|m| m.get(id))
                 {
                     item.clone()
                 } else {
@@ -149,21 +149,21 @@ impl<'a> Environment<'a> {
                     .into_iter()
                     .map(|e| self.eval_expr(ctx, e))
                     .collect::<Result<_>>()?;
-                self.eval_func(ctx, ident, args, predicate.map(|l| *l))?
+                self.eval_func(ctx, ident, args, predicate.as_deref())?
             },
             Node::Operation {
                 left,
                 operator,
                 right,
-            } => self.eval_operator(ctx, operator, *left, *right)?,
-            Node::Unary { operator, node } => self.eval_unary_operator(ctx, operator, *node)?,
-            Node::Postfix { operator, node } => self.eval_postfix_operator(ctx, operator, *node)?,
+            } => self.eval_operator(ctx, operator, left, right)?,
+            Node::Unary { operator, node } => self.eval_unary_operator(ctx, operator, node)?,
+            Node::Postfix { operator, node } => self.eval_postfix_operator(ctx, operator, node)?,
             Node::Array(a) => Value::Array(
-                a.into_iter()
+                a.iter()
                     .map(|e| self.eval_expr(ctx, e))
                     .collect::<Result<_>>()?,
             ), // node => bail!("unexpected node: {node:?}"),
-            Node::Range(start, end) => match (self.eval_expr(ctx, *start)?, self.eval_expr(ctx, *end)?) {
+            Node::Range(start, end) => match (self.eval_expr(ctx, start)?, self.eval_expr(ctx, end)?) {
                 (Value::Integer(start), Value::Integer(end)) => {
                     Value::Array((start..=end).map(Value::Integer).collect())
                 }

@@ -70,23 +70,23 @@ impl Environment<'_> {
     pub fn eval_postfix_operator(
         &self,
         ctx: &Context,
-        operator: PostfixOperator,
-        node: Node,
+        operator: &PostfixOperator,
+        node: &Node,
     ) -> Result<Value> {
         let value = self.eval_expr(ctx, node)?;
         let result = match operator {
-            PostfixOperator::Index { idx, optional } => match self.eval_index_key(ctx, *idx)? {
+            PostfixOperator::Index { idx, optional } => match self.eval_index_key(ctx, idx)? {
                 Value::Integer(idx) => match value {
                     Value::Array(arr) => {
                         let idx = i64_to_idx(idx, arr.len());
                         arr.get(idx).cloned().unwrap_or(Value::Nil)
                     }
-                    _ if optional => Value::Nil,
+                    _ if *optional => Value::Nil,
                     _ => bail!("Invalid operand for operator []"),
                 },
                 Value::String(key) => match value {
                     Value::Map(map) => map.get(&key).cloned().unwrap_or(Value::Nil),
-                    _ if optional => Value::Nil,
+                    _ if *optional => Value::Nil,
                     _ => bail!("Invalid operand for operator []"),
                 },
                 v => bail!("Invalid operand for operator []: {v:?}"),
@@ -101,12 +101,12 @@ impl Environment<'_> {
                 _ => bail!("Invalid operand for operator []"),
             },
             PostfixOperator::Default(default) => match value {
-                Value::Nil => self.eval_expr(ctx, *default)?,
+                Value::Nil => self.eval_expr(ctx, default)?,
                 value => value,
             },
             PostfixOperator::Ternary { left, right } => match value {
-                Value::Bool(true) => self.eval_expr(ctx, *left)?,
-                Value::Bool(false) => self.eval_expr(ctx, *right)?,
+                Value::Bool(true) => self.eval_expr(ctx, left)?,
+                Value::Bool(false) => self.eval_expr(ctx, right)?,
                 value => bail!("Invalid condition for ?: {value:?}"),
             },
             PostfixOperator::Pipe(func) => {
@@ -114,13 +114,13 @@ impl Environment<'_> {
                     ident,
                     args,
                     predicate,
-                } = *func
+                } = func.as_ref()
                 {
-                    let args = args.into_iter()
+                    let args = args.iter()
                         .map(|arg| self.eval_expr(ctx, arg))
                         .chain(once(Ok(value)))
                         .collect::<Result<Vec<Value>>>()?;
-                    self.eval_func(ctx, ident, args, predicate.map(|p| *p))?
+                    self.eval_func(ctx, ident, args, predicate.as_deref())?
                 } else {
                     bail!("Invalid operand for operator |");
                 }
@@ -130,10 +130,10 @@ impl Environment<'_> {
         Ok(result)
     }
 
-    fn eval_index_key(&self, ctx: &Context, idx: Node) -> Result<Value> {
+    fn eval_index_key(&self, ctx: &Context, idx: &Node) -> Result<Value> {
         match idx {
-            Node::Value(v) => Ok(v),
-            Node::Ident(id) => Ok(Value::String(id)),
+            Node::Value(v) => Ok(v.clone()),
+            Node::Ident(id) => Ok(Value::String(id.clone())),
             idx => self.eval_expr(ctx, idx),
         }
     }
