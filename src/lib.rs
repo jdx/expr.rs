@@ -36,7 +36,7 @@ mod serde;
 mod test;
 mod value;
 
-pub use crate::context::Context;
+pub use crate::context::{Context, EvalContext};
 pub use crate::error::{Error, Result};
 pub use crate::eval::{Environment, run, eval};
 pub use crate::parser::compile;

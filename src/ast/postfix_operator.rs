@@ -2,7 +2,7 @@ use std::iter::once;
 use crate::ast::node::Node;
 use crate::Rule;
 use crate::{bail, Result};
-use crate::{Context, Environment, Value};
+use crate::{Environment, EvalContext, Value};
 use log::trace;
 use pest::iterators::Pair;
 
@@ -69,11 +69,11 @@ impl From<Pair<'_, Rule>> for PostfixOperator {
 impl Environment<'_> {
     pub fn eval_postfix_operator(
         &self,
-        ctx: &Context,
+        ctx: &EvalContext,
         operator: &PostfixOperator,
         node: &Node,
     ) -> Result<Value> {
-        let value = self.eval_expr(ctx, node)?;
+        let value = self.eval_node(ctx, node)?;
         let result = match operator {
             PostfixOperator::Index { idx, optional } => match self.eval_index_key(ctx, idx)? {
                 Value::Integer(idx) => match value {
@@ -101,12 +101,12 @@ impl Environment<'_> {
                 _ => bail!("Invalid operand for operator []"),
             },
             PostfixOperator::Default(default) => match value {
-                Value::Nil => self.eval_expr(ctx, default)?,
+                Value::Nil => self.eval_node(ctx, default)?,
                 value => value,
             },
             PostfixOperator::Ternary { left, right } => match value {
-                Value::Bool(true) => self.eval_expr(ctx, left)?,
-                Value::Bool(false) => self.eval_expr(ctx, right)?,
+                Value::Bool(true) => self.eval_node(ctx, left)?,
+                Value::Bool(false) => self.eval_node(ctx, right)?,
                 value => bail!("Invalid condition for ?: {value:?}"),
             },
             PostfixOperator::Pipe(func) => {
@@ -117,7 +117,7 @@ impl Environment<'_> {
                 } = func.as_ref()
                 {
                     let args = args.iter()
-                        .map(|arg| self.eval_expr(ctx, arg))
+                        .map(|arg| self.eval_node(ctx, arg))
                         .chain(once(Ok(value)))
                         .collect::<Result<Vec<Value>>>()?;
                     self.eval_func(ctx, ident, args, predicate.as_deref())?
@@ -130,11 +130,11 @@ impl Environment<'_> {
         Ok(result)
     }
 
-    fn eval_index_key(&self, ctx: &Context, idx: &Node) -> Result<Value> {
+    fn eval_index_key(&self, ctx: &EvalContext, idx: &Node) -> Result<Value> {
         match idx {
             Node::Value(v) => Ok(v.clone()),
             Node::Ident(id) => Ok(Value::String(id.clone())),
-            idx => self.eval_expr(ctx, idx),
+            idx => self.eval_node(ctx, idx),
         }
     }
 }

@@ -1,7 +1,7 @@
 use crate::ast::node::Node;
 use crate::Value::{Array, Bool, Float, Integer, Map, String};
 use crate::{bail, Result, Rule};
-use crate::{Context, Environment, Value};
+use crate::{Environment, EvalContext, Value};
 use log::trace;
 use pest::iterators::Pair;
 use std::str::FromStr;
@@ -61,17 +61,17 @@ impl From<Pair<'_, Rule>> for Operator {
 impl Environment<'_> {
     pub fn eval_operator(
         &self,
-        ctx: &Context,
+        ctx: &EvalContext,
         operator: &Operator,
         left: &Node,
         right: &Node,
     ) -> Result<Value> {
-        let left = self.eval_expr(ctx, left)?;
+        let left = self.eval_node(ctx, left)?;
         match &operator {
             Operator::And => {
                 return match left {
                     Bool(false) => Ok(Bool(false)),
-                    Bool(true) => match self.eval_expr(ctx, right)? {
+                    Bool(true) => match self.eval_node(ctx, right)? {
                         Bool(value) => Ok(Bool(value)),
                         _ => bail!("Invalid operands for operator {operator}"),
                     },
@@ -81,7 +81,7 @@ impl Environment<'_> {
             Operator::Or => {
                 return match left {
                     Bool(true) => Ok(Bool(true)),
-                    Bool(false) => match self.eval_expr(ctx, right)? {
+                    Bool(false) => match self.eval_node(ctx, right)? {
                         Bool(value) => Ok(Bool(value)),
                         _ => bail!("Invalid operands for operator {operator}"),
                     },
@@ -90,7 +90,7 @@ impl Environment<'_> {
             }
             _ => {}
         }
-        let right = self.eval_expr(ctx, right)?;
+        let right = self.eval_node(ctx, right)?;
         let result = match operator {
             Operator::Add => match (left, right) {
                 (Integer(left), Integer(right)) => (left + right).into(),

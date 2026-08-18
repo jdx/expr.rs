@@ -7,20 +7,20 @@ pub mod string;
 use crate::Result;
 
 use crate::ast::program::Program;
-use crate::{bail, Context, Environment, Value};
+use crate::{bail, Environment, EvalContext, Value};
 
 pub type Function<'a> = Box<dyn Fn(ExprCall) -> Result<Value> + 'a + Sync + Send>;
 
-pub struct ExprCall<'a, 'b> {
+pub struct ExprCall<'a, 'b, 'c> {
     pub ident: String,
     pub args: Vec<Value>,
     pub predicate: Option<&'a Program>,
-    pub ctx: &'a Context,
-    pub env: &'a Environment<'b>,
+    pub ctx: &'a EvalContext<'b>,
+    pub env: &'a Environment<'c>,
 }
 
 impl Environment<'_> {
-    pub fn eval_func(&self, ctx: &Context, ident: &str, args: Vec<Value>, predicate: Option<&Program>) -> Result<Value> {
+    pub fn eval_func(&self, ctx: &EvalContext, ident: &str, args: Vec<Value>, predicate: Option<&Program>) -> Result<Value> {
         let call = ExprCall {
             ident: ident.to_string(),
             args,

@@ -200,6 +200,7 @@ fn context() -> Result<()> {
         eval(r#"$env["Version"]"#, &ctx)?.to_string(),
         r#""v1.0.0""#
     );
+    assert_eq!(eval(r#"let x = 1; "x" in $env"#, &ctx)?.to_string(), "false");
     Ok(())
 }
 
