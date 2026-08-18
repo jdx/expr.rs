@@ -1,5 +1,5 @@
 use crate::ast::node::Node;
-use crate::Value::{Array, Bool, Float, Integer, Map, String};
+use crate::Value::{Array, Bool, DateTime, Duration, Float, Integer, Map, Month, String, Weekday};
 use crate::{bail, Result, Rule};
 use crate::{ContextProvider, Environment, Value};
 use log::trace;
@@ -127,6 +127,13 @@ impl Environment<'_> {
                 (Integer(left), Float(right)) => Float(left as f64 + right),
                 (Float(left), Integer(right)) => Float(left + right as f64),
                 (String(left), String(right)) => format!("{left}{right}").into(),
+                (DateTime(left), Duration(right)) => {
+                    DateTime(left + chrono::Duration::nanoseconds(right))
+                }
+                (Duration(left), DateTime(right)) => {
+                    DateTime(right + chrono::Duration::nanoseconds(left))
+                }
+                (Duration(left), Duration(right)) => Duration(left + right),
                 _ => bail!("Invalid operands for operator +"),
             },
             Operator::Subtract => match (left, right) {
@@ -134,6 +141,15 @@ impl Environment<'_> {
                 (Float(left), Float(right)) => Float(left - right),
                 (Integer(left), Float(right)) => Float(left as f64 - right),
                 (Float(left), Integer(right)) => Float(left - right as f64),
+                (DateTime(left), DateTime(right)) => Duration(
+                    (left - right)
+                        .num_nanoseconds()
+                        .ok_or_else(|| crate::Error::ExprError("duration out of range".into()))?,
+                ),
+                (DateTime(left), Duration(right)) => {
+                    DateTime(left - chrono::Duration::nanoseconds(right))
+                }
+                (Duration(left), Duration(right)) => Duration(left - right),
                 _ => bail!("Invalid operands for operator -"),
             },
             Operator::Multiply => match (left, right) {
@@ -141,6 +157,10 @@ impl Environment<'_> {
                 (Float(left), Float(right)) => Float(left * right),
                 (Integer(left), Float(right)) => Float(left as f64 * right),
                 (Float(left), Integer(right)) => Float(left * right as f64),
+                (Duration(left), Integer(right)) => Duration(left * right),
+                (Duration(left), Float(right)) => Float(left as f64 * right),
+                (Integer(left), Duration(right)) => Float(left as f64 * right as f64),
+                (Float(left), Duration(right)) => Float(left * right as f64),
                 _ => bail!("Invalid operands for operator *"),
             },
             Operator::Divide => match (left, right) {
@@ -148,6 +168,9 @@ impl Environment<'_> {
                 (Float(left), Float(right)) => Float(left / right),
                 (Integer(left), Float(right)) => Float(left as f64 / right),
                 (Float(left), Integer(right)) => Float(left / right as f64),
+                (Duration(left), Integer(right)) => Float(left as f64 / right as f64),
+                (Duration(left), Float(right)) => Float(left as f64 / right),
+                (Duration(left), Duration(right)) => Float(left as f64 / right as f64),
                 _ => bail!("Invalid operands for operator /"),
             },
             Operator::Modulo => match (left, right) {
@@ -161,14 +184,28 @@ impl Environment<'_> {
                 (Float(left), Integer(right)) => Float(left.powf(right as f64)),
                 _ => bail!("Invalid operands for operator {operator}"),
             },
-            Operator::Equal => Bool(values_equal(&left, &right)),
-            Operator::NotEqual => Bool(!values_equal(&left, &right)),
+            Operator::Equal => match (&left, &right) {
+                (Month(_) | Weekday(_), Integer(_))
+                | (Integer(_), Month(_) | Weekday(_)) => {
+                    bail!("Invalid operands for operator {operator}")
+                }
+                _ => Bool(values_equal(&left, &right)),
+            },
+            Operator::NotEqual => match (&left, &right) {
+                (Month(_) | Weekday(_), Integer(_))
+                | (Integer(_), Month(_) | Weekday(_)) => {
+                    bail!("Invalid operands for operator {operator}")
+                }
+                _ => Bool(!values_equal(&left, &right)),
+            },
             Operator::GreaterThan => match (left, right) {
                 (Integer(left), Integer(right)) => (left > right).into(),
                 (Float(left), Float(right)) => (left > right).into(),
                 (Integer(left), Float(right)) => (left as f64 > right).into(),
                 (Float(left), Integer(right)) => (left > right as f64).into(),
                 (String(left), String(right)) => (left > right).into(),
+                (DateTime(left), DateTime(right)) => (left > right).into(),
+                (Duration(left), Duration(right)) => (left > right).into(),
                 _ => bail!("Invalid operands for operator {operator}"),
             },
             Operator::GreaterThanOrEqual => match (left, right) {
@@ -177,6 +214,8 @@ impl Environment<'_> {
                 (Integer(left), Float(right)) => (left as f64 >= right).into(),
                 (Float(left), Integer(right)) => (left >= right as f64).into(),
                 (String(left), String(right)) => (left >= right).into(),
+                (DateTime(left), DateTime(right)) => (left >= right).into(),
+                (Duration(left), Duration(right)) => (left >= right).into(),
                 _ => bail!("Invalid operands for operator {operator}"),
             },
             Operator::LessThan => match (left, right) {
@@ -185,6 +224,8 @@ impl Environment<'_> {
                 (Integer(left), Float(right)) => ((left as f64) < right).into(),
                 (Float(left), Integer(right)) => (left < right as f64).into(),
                 (String(left), String(right)) => (left < right).into(),
+                (DateTime(left), DateTime(right)) => (left < right).into(),
+                (Duration(left), Duration(right)) => (left < right).into(),
                 _ => bail!("Invalid operands for operator {operator}"),
             },
             Operator::LessThanOrEqual => match (left, right) {
@@ -193,6 +234,8 @@ impl Environment<'_> {
                 (Integer(left), Float(right)) => (left as f64 <= right).into(),
                 (Float(left), Integer(right)) => (left <= right as f64).into(),
                 (String(left), String(right)) => (left <= right).into(),
+                (DateTime(left), DateTime(right)) => (left <= right).into(),
+                (Duration(left), Duration(right)) => (left <= right).into(),
                 _ => bail!("Invalid operands for operator {operator}"),
             },
             Operator::And | Operator::Or => unreachable!("handled before evaluating right operand"),

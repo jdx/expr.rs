@@ -83,6 +83,11 @@ fn expr_string(value: &Value) -> String {
             "[{}]",
             values.iter().map(u8::to_string).collect::<Vec<_>>().join(" ")
         ),
+        Value::DateTime(value) => value.to_rfc3339(),
+        Value::Duration(value) => crate::functions::temporal::format_duration(*value),
+        Value::Timezone(value) => value.to_string(),
+        Value::Month(value) => crate::functions::temporal::month_name(*value).to_string(),
+        Value::Weekday(value) => crate::functions::temporal::weekday_name(*value).to_string(),
         Value::Array(values) => format!(
             "[{}]",
             values.iter().map(expr_string).collect::<Vec<_>>().join(" ")

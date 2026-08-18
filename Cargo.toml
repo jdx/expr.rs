@@ -30,6 +30,8 @@ name = "expr"
 
 [dependencies]
 base64 = "0.23"
+chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = { version = "0.10", features = ["serde"] }
 indexmap = "2"
 regex = "1"
 thiserror = "2"

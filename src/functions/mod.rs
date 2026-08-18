@@ -6,6 +6,7 @@ pub mod json;
 pub mod misc;
 pub mod number;
 pub mod string;
+pub mod temporal;
 
 use crate::Result;
 

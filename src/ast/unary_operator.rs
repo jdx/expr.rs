@@ -49,6 +49,7 @@ impl Environment<'_> {
             UnaryOperator::Negative => match node {
                 Value::Integer(n) => Value::Integer(-n),
                 Value::Float(f) => Value::Float(-f),
+                Value::Duration(value) => Value::Duration(-value),
                 _ => bail!("Invalid operand for operator -"),
             },
         };

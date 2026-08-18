@@ -6,6 +6,103 @@ use pest::iterators::{Pair, Pairs};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::{Display, Formatter};
+use std::ops::{Add, Deref, Sub};
+
+/// A time value together with the named timezone, when one is known.
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(transparent))]
+pub struct DateTimeValue {
+    value: chrono::DateTime<chrono::FixedOffset>,
+    #[cfg_attr(feature = "serde", serde(skip))]
+    timezone: Option<chrono_tz::Tz>,
+}
+
+impl DateTimeValue {
+    pub fn fixed(value: chrono::DateTime<chrono::FixedOffset>) -> Self {
+        Self { value, timezone: None }
+    }
+
+    pub fn zoned(value: chrono::DateTime<chrono_tz::Tz>, timezone: chrono_tz::Tz) -> Self {
+        Self { value: value.fixed_offset(), timezone: Some(timezone) }
+    }
+
+    pub(crate) fn with_timezone(&self, timezone: chrono_tz::Tz) -> Self {
+        Self::zoned(self.value.with_timezone(&timezone), timezone)
+    }
+
+    pub fn checked_add_signed(mut self, duration: chrono::Duration) -> Option<Self> {
+        self.value = self.value.checked_add_signed(duration)?;
+        Some(self)
+    }
+
+    pub fn checked_sub_signed(mut self, duration: chrono::Duration) -> Option<Self> {
+        self.value = self.value.checked_sub_signed(duration)?;
+        Some(self)
+    }
+
+    pub(crate) fn zone_name(&self) -> String {
+        if let Some(timezone) = self.timezone {
+            self.value.with_timezone(&timezone).format("%Z").to_string()
+        } else if self.value.offset().local_minus_utc() == 0 {
+            "UTC".to_string()
+        } else {
+            self.value.format("%z").to_string()
+        }
+    }
+}
+
+impl From<chrono::DateTime<chrono::FixedOffset>> for DateTimeValue {
+    fn from(value: chrono::DateTime<chrono::FixedOffset>) -> Self {
+        Self::fixed(value)
+    }
+}
+
+impl Deref for DateTimeValue {
+    type Target = chrono::DateTime<chrono::FixedOffset>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+
+impl PartialEq for DateTimeValue {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+
+impl PartialOrd for DateTimeValue {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.value.partial_cmp(&other.value)
+    }
+}
+
+impl Add<chrono::Duration> for DateTimeValue {
+    type Output = Self;
+
+    fn add(mut self, duration: chrono::Duration) -> Self::Output {
+        self.value += duration;
+        self
+    }
+}
+
+impl Sub<chrono::Duration> for DateTimeValue {
+    type Output = Self;
+
+    fn sub(mut self, duration: chrono::Duration) -> Self::Output {
+        self.value -= duration;
+        self
+    }
+}
+
+impl Sub for DateTimeValue {
+    type Output = chrono::Duration;
+
+    fn sub(self, other: Self) -> Self::Output {
+        self.value - other.value
+    }
+}
 
 /// Represents a data value as input or output to an expr program
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -18,6 +115,11 @@ pub enum Value {
     #[default]
     Nil,
     String(String),
+    DateTime(DateTimeValue),
+    Duration(i64),
+    Timezone(chrono_tz::Tz),
+    Month(u32),
+    Weekday(u32),
     Array(Vec<Value>),
     // Keep Bytes after Array so untagged serde treats JSON integer arrays as arrays.
     Bytes(Vec<u8>),
@@ -71,6 +173,20 @@ impl Value {
     pub fn as_bytes(&self) -> Option<&[u8]> {
         match self {
             Value::Bytes(bytes) => Some(bytes),
+            _ => None,
+        }
+    }
+
+    pub fn as_datetime(&self) -> Option<&chrono::DateTime<chrono::FixedOffset>> {
+        match self {
+            Value::DateTime(value) => Some(&value.value),
+            _ => None,
+        }
+    }
+
+    pub fn as_duration(&self) -> Option<i64> {
+        match self {
+            Value::Duration(value) => Some(*value),
             _ => None,
         }
     }
@@ -196,6 +312,10 @@ impl Display for Value {
                     .collect::<Vec<String>>()
                     .join(" ")
             ),
+            Value::DateTime(value) => write!(f, "{}", value.to_rfc3339()),
+            Value::Duration(value) => write!(f, "{value}ns"),
+            Value::Timezone(value) => write!(f, "{value}"),
+            Value::Month(value) | Value::Weekday(value) => write!(f, "{value}"),
             Value::Array(a) => write!(
                 f,
                 "[{}]",
