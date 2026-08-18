@@ -173,3 +173,8 @@ len(fromPairs([[1, "one"]]))	1
 string(fromPairs([[10, "ten"], [2, "two"], [1, "one"]]))	"map[1:one 2:two 10:ten]"
 string(fromPairs([[true, "yes"], [false, "no"]]))	"map[false:no true:yes]"
 string(fromPairs([[2.5, "b"], [1.5, "a"]]))	"map[1.5:a 2.5:b]"
+trimPrefix("abc")	"abc"
+trimSuffix("abc")	"abc"
+len(split("abc", ",", 0))	0
+len(splitAfter("a,b", ",", 0))	0
+splitAfter("a,b", ",", -1)	["a,","b"]

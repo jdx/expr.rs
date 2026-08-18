@@ -15,18 +15,30 @@ pub fn add_string_functions(env: &mut Environment) {
     });
 
     env.add_function("trimPrefix", |c| {
-        if let (Value::String(s), Value::String(prefix)) = (&c.args[0], &c.args[1]) {
-            Ok(s.strip_prefix(prefix).unwrap_or(s).into())
-        } else {
-            bail!("trimPrefix() takes a string as the first argument and a string to trim as the second argument");
+        if c.args.is_empty() || c.args.len() > 2 {
+            bail!("trimPrefix() takes one or two arguments");
+        }
+        let Value::String(s) = &c.args[0] else {
+            bail!("trimPrefix() takes a string as the first argument");
+        };
+        match c.args.get(1) {
+            Some(Value::String(prefix)) => Ok(s.strip_prefix(prefix).unwrap_or(s).into()),
+            None => Ok(s.into()),
+            Some(_) => bail!("trimPrefix() prefix must be a string"),
         }
     });
 
     env.add_function("trimSuffix", |c| {
-        if let (Value::String(s), Value::String(suffix)) = (&c.args[0], &c.args[1]) {
-            Ok(s.strip_suffix(suffix).unwrap_or(s).into())
-        } else {
-            bail!("trimSuffix() takes a string as the first argument and a string to trim as the second argument");
+        if c.args.is_empty() || c.args.len() > 2 {
+            bail!("trimSuffix() takes one or two arguments");
+        }
+        let Value::String(s) = &c.args[0] else {
+            bail!("trimSuffix() takes a string as the first argument");
+        };
+        match c.args.get(1) {
+            Some(Value::String(suffix)) => Ok(s.strip_suffix(suffix).unwrap_or(s).into()),
+            None => Ok(s.into()),
+            Some(_) => bail!("trimSuffix() suffix must be a string"),
         }
     });
 
@@ -53,6 +65,9 @@ pub fn add_string_functions(env: &mut Environment) {
     });
 
     env.add_function("split", |c| {
+        if c.args.len() != 2 && c.args.len() != 3 {
+            bail!("split() takes two or three arguments");
+        }
         if let (Value::String(s), Value::String(sep), None) = (&c.args[0], &c.args[1], c.args.get(2)) {
             Ok(s.split(sep).map(Value::from).collect::<Vec<_>>().into())
         } else if let (Value::String(s), Value::String(sep), Some(Value::Integer(n))) = (&c.args[0], &c.args[1], c.args.get(2)) {
@@ -63,11 +78,21 @@ pub fn add_string_functions(env: &mut Environment) {
     });
 
     env.add_function("splitAfter", |c| {
+        if c.args.len() != 2 && c.args.len() != 3 {
+            bail!("splitAfter() takes two or three arguments");
+        }
         if let (Value::String(s), Value::String(sep), None) = (&c.args[0], &c.args[1], c.args.get(2)) {
             Ok(s.split_inclusive(sep).map(Value::from).collect::<Vec<_>>().into())
         } else if let (Value::String(s), Value::String(sep), Some(Value::Integer(n))) = (&c.args[0], &c.args[1], c.args.get(2)) {
-            let mut arr = s.split_inclusive(sep).take(*n as usize - 1).map(|s| s.to_string()).collect::<Vec<_>>();
-            arr.push(s.split_inclusive(sep).skip(*n as usize - 1).collect::<Vec<_>>().join(""));
+            if *n == 0 {
+                return Ok(Value::Array(Vec::new()));
+            }
+            if *n < 0 {
+                return Ok(s.split_inclusive(sep).map(Value::from).collect::<Vec<_>>().into());
+            }
+            let count = *n as usize;
+            let mut arr = s.split_inclusive(sep).take(count - 1).map(|s| s.to_string()).collect::<Vec<_>>();
+            arr.push(s.split_inclusive(sep).skip(count - 1).collect::<Vec<_>>().join(""));
             Ok(arr.into())
         } else {
             bail!("splitAfter() takes a string as the first argument and a string as the second argument");
@@ -107,6 +132,9 @@ pub fn add_string_functions(env: &mut Environment) {
     });
 
     env.add_function("indexOf", |c| {
+        if c.args.len() != 2 {
+            bail!("indexOf() takes exactly two arguments");
+        }
         if let (Value::String(s), Value::String(sub)) = (&c.args[0], &c.args[1]) {
             Ok(s.find(sub).map(|i| i as i64).unwrap_or(-1).into())
         } else {
@@ -115,6 +143,9 @@ pub fn add_string_functions(env: &mut Environment) {
     });
 
     env.add_function("lastIndexOf", |c| {
+        if c.args.len() != 2 {
+            bail!("lastIndexOf() takes exactly two arguments");
+        }
         if let (Value::String(s), Value::String(sub)) = (&c.args[0], &c.args[1]) {
             Ok(s.rfind(sub).map(|i| i as i64).unwrap_or(-1).into())
         } else {
@@ -123,6 +154,9 @@ pub fn add_string_functions(env: &mut Environment) {
     });
 
     env.add_function("hasPrefix", |c| {
+        if c.args.len() != 2 {
+            bail!("hasPrefix() takes exactly two arguments");
+        }
         if let (Value::String(s), Value::String(prefix)) = (&c.args[0], &c.args[1]) {
             Ok(s.starts_with(prefix).into())
         } else {
@@ -131,6 +165,9 @@ pub fn add_string_functions(env: &mut Environment) {
     });
 
     env.add_function("hasSuffix", |c| {
+        if c.args.len() != 2 {
+            bail!("hasSuffix() takes exactly two arguments");
+        }
         if let (Value::String(s), Value::String(suffix)) = (&c.args[0], &c.args[1]) {
             Ok(s.ends_with(suffix).into())
         } else {
