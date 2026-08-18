@@ -1,0 +1,27 @@
+# Instruction-counted benchmarks for the evaluator's major hot paths.
+#
+# The benchmark binary performs fixed, hermetic work. Building happens outside
+# the measured command so compilation cannot affect the results.
+
+[gate]
+pct = 1.0
+
+[bench.startup]
+cmd = ["./target/release/examples/expr-bench", "startup"]
+runs = 10
+
+[bench.context]
+cmd = ["./target/release/examples/expr-bench", "context"]
+runs = 10
+
+[bench.predicate]
+cmd = ["./target/release/examples/expr-bench", "predicate"]
+runs = 10
+
+[bench.regex]
+cmd = ["./target/release/examples/expr-bench", "regex"]
+runs = 10
+
+[bench.json]
+cmd = ["./target/release/examples/expr-bench", "json"]
+runs = 10
