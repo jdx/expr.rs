@@ -4,14 +4,14 @@ stmt    =  { "let" ~ ident ~ "=" ~ expr ~ ";" }
 expr    =  { prefix? ~ term ~ postfix* ~ (infix ~ prefix? ~ term ~ postfix*)* }
 
 prefix  = _{ negation_op | sign_op }
-infix   = _{ exponent_op | multiplication_op | addition_op | comparison_op | equal_op | and_op | or_op | not_in_op | string_op }
+infix   = _{ exponent_op | multiplication_op | addition_op | range_op | comparison_op | equal_op | and_op | or_op | not_in_op | string_op }
 postfix = _{ ternary | range_start_op | range_end_op | method_call | opt_membership_op | opt_index_op | membership_op | index_op | default_op | pipe }
 
 func                   =  { ident ~ "(" ~ (expr ~ ("," ~ expr)*)? ~ (","? ~ predicate ~ ("," ~ expr)*)? ~ ")" }
 pipe                   =  { "|" ~ func }
 method_call            =  { "." ~ ident ~ "(" ~ (expr ~ ("," ~ expr)*)? ~ ")" }
 predicate              =  { "." ~ ident | "{" ~ program ~ "}" }
-term                   = _{ conditional_if | func | range | value | ident | array | map | "(" ~ expr ~ ")" }
+term                   = _{ conditional_if | func | value | ident | array | map | "(" ~ expr ~ ")" }
 conditional_if         =  { if_keyword ~ expr ~ block ~ else_keyword ~ (conditional_if | block) }
 if_keyword             = _{ !if_identifier_prefix ~ "if" }
 else_keyword           = _{ !else_identifier_prefix ~ "else" }
@@ -31,6 +31,7 @@ sign_op                =  { "+" | "-" }
 exponent_op            =  { "**" | "^" }
 multiplication_op      =  { "*" | "/" | "%" }
 addition_op            =  { "+" | "-" }
+range_op               =  { ".." }
 comparison_op          =  { "<=" | ">=" | "<" | ">" }
 equal_op               =  { "==" | "!=" }
 and_op                 =  { "&&" | "and" }
@@ -41,7 +42,6 @@ value              =  { bytes | string | string_multiline | decimal | int | bool
 array              =  { "[" ~ (expr ~ ("," ~ expr)* ~ ","?)? ~ "]" }
 map                =  { "{" ~ (map_key ~ ":" ~ expr ~ ("," ~ map_key ~ ":" ~ expr)* ~ ","?)? ~ "}" }
 map_key            = _{ ident | string }
-range              =  { value ~ ".." ~ value }
 string             = ${ ("\"" ~ inner_double ~ "\"" | "'" ~ inner_single ~ "'") }
 bytes              = ${ ("b" | "B") ~ ("\"" ~ inner_bytes_double ~ "\"" | "'" ~ inner_bytes_single ~ "'") }
 string_multiline   = ${ "`" ~ inner_multiline ~ "`" }

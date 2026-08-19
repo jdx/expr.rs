@@ -97,6 +97,9 @@ impl From<Pairs<'_, Rule>> for Node {
                 node: Box::new(left),
             })
             .map_infix(|left, operator, right| {
+                if operator.as_rule() == Rule::range_op {
+                    return Node::Range(Box::new(left), Box::new(right));
+                }
                 let operator = operator.into();
                 let compiled_regex = match (&operator, &right) {
                     (Operator::Matches, Node::Value(Value::String(pattern))) => {
@@ -197,12 +200,6 @@ impl From<Pair<'_, Rule>> for Node {
                     map.insert(key, val.into_inner().into());
                 }
                 Node::Value(Value::Map(map))
-            }
-            Rule::range => {
-                let mut inner = pair.into_inner();
-                let start = Box::new(inner.next().unwrap().into());
-                let end = Box::new(inner.next().unwrap().into());
-                Node::Range(start, end)
             }
             rule => unreachable!("Unexpected rule: {rule:?}"),
         }

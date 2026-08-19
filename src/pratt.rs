@@ -15,6 +15,7 @@ pub(crate) static PRATT_PARSER: Lazy<PrattParser<Rule>> = Lazy::new(|| {
             | Op::infix(comparison_op, Left)
             | Op::infix(not_in_op, Left)
             | Op::infix(string_op, Left))
+        .op(Op::infix(range_op, Left))
         .op(Op::infix(addition_op, Left))
         .op(Op::prefix(negation_op))
         .op(Op::infix(multiplication_op, Left))
