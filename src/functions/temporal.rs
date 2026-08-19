@@ -1,5 +1,5 @@
-use crate::{bail, value::DateTimeValue, Environment, Error, Value};
-use chrono::{DateTime, Datelike, Duration, FixedOffset, Local, NaiveDate, NaiveDateTime, NaiveTime, Offset, TimeZone, Timelike, Utc};
+use crate::{bail, value::{DateTimeValue, TimezoneValue}, Environment, Error, Value};
+use chrono::{DateTime, Datelike, Duration, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, Offset, TimeZone, Timelike, Utc};
 use chrono_tz::{OffsetComponents, Tz};
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -42,13 +42,22 @@ pub fn add_temporal_functions(env: &mut Environment) {
         let Value::String(value) = call.args.pop().expect("length checked") else {
             bail!("timezone() takes a string");
         };
-        value
-            .parse::<Tz>()
-            .map(Value::Timezone)
-            .map_err(|error| Error::ExprError(format!("invalid timezone {value}: {error}")))
+        parse_timezone(&value).map(Value::Timezone)
     });
 
     env.add_function("date", |call| parse_date(call.args).map(Value::DateTime));
+}
+
+fn parse_timezone(value: &str) -> crate::Result<TimezoneValue> {
+    if value == "Local" {
+        TimezoneValue::local()
+            .map_err(|error| Error::ExprError(format!("invalid local timezone: {error}")))
+    } else {
+        value
+            .parse::<Tz>()
+            .map(TimezoneValue::named)
+            .map_err(|error| Error::ExprError(format!("invalid timezone {value}: {error}")))
+    }
 }
 
 fn parse_duration(value: &str) -> crate::Result<i64> {
@@ -120,11 +129,9 @@ fn parse_date(mut args: Vec<Value>) -> crate::Result<DateTimeValue> {
         bail!("date() first argument must be a string");
     };
     let timezone = match args.get(2) {
-        Some(Value::String(value)) => value
-            .parse::<Tz>()
-            .map_err(|error| Error::ExprError(format!("invalid timezone {value}: {error}")))?,
+        Some(Value::String(value)) => parse_timezone(value)?,
         Some(_) => bail!("date() timezone must be a string"),
-        None => leading_timezone.unwrap_or(chrono_tz::UTC),
+        None => leading_timezone.unwrap_or_else(|| TimezoneValue::named(chrono_tz::UTC)),
     };
 
     if let Some(layout) = args.get(1) {
@@ -212,7 +219,11 @@ fn parse_date(mut args: Vec<Value>) -> crate::Result<DateTimeValue> {
     bail!("invalid date {value}")
 }
 
-fn parse_in_timezone(value: &str, format: &str, timezone: Tz) -> crate::Result<DateTimeValue> {
+fn parse_in_timezone(
+    value: &str,
+    format: &str,
+    timezone: TimezoneValue,
+) -> crate::Result<DateTimeValue> {
     if format.contains("%z")
         || format.contains("%:z")
         || format.contains("%::z")
@@ -238,6 +249,7 @@ fn parse_in_timezone(value: &str, format: &str, timezone: Tz) -> crate::Result<D
         bail!("invalid date {value}");
     };
     timezone
+        .timezone()
         .from_local_datetime(&naive)
         .earliest()
         .map(|value| DateTimeValue::zoned(value, timezone))
@@ -283,7 +295,7 @@ fn go_layout_to_chrono(layout: &str) -> String {
     let mut output = String::new();
     let mut remaining = layout;
     while !remaining.is_empty() {
-        if output.ends_with("%S") {
+        if output.ends_with("%S") || output.ends_with("%-S") {
             if let Some((separator, digits)) = fractional_layout(remaining) {
                 output.push_str("%.f");
                 remaining = &remaining[separator.len_utf8() + digits..];
@@ -314,7 +326,8 @@ fn format_go_layout(value: &DateTimeValue, layout: &str) -> String {
     let mut chrono_layout = String::new();
     let mut remaining = layout;
     while !remaining.is_empty() {
-        if go_layout_to_chrono(&chrono_layout).ends_with("%S") {
+        let converted_layout = go_layout_to_chrono(&chrono_layout);
+        if converted_layout.ends_with("%S") || converted_layout.ends_with("%-S") {
             if let Some((separator, digits)) = fractional_layout(remaining) {
                 output.push_str(&value.format(&go_layout_to_chrono(&chrono_layout)).to_string());
                 chrono_layout.clear();
@@ -468,8 +481,8 @@ pub(crate) fn eval_method(receiver: Value, method: &str, args: Vec<Value>) -> cr
             Ok(Value::Bool(value == other))
         }
         (Value::DateTime(value), "IsDST") => {
-            let is_dst = value.named_timezone().is_some_and(|timezone| {
-                timezone
+            let is_dst = value.timezone().is_some_and(|timezone| {
+                timezone.timezone()
                     .offset_from_utc_datetime(&value.naive_utc())
                     .dst_offset()
                     != Duration::zero()
@@ -480,16 +493,16 @@ pub(crate) fn eval_method(receiver: Value, method: &str, args: Vec<Value>) -> cr
             method,
             args,
             Value::Bool(
-                value.year() == 1
-                    && value.month() == 1
-                    && value.day() == 1
-                    && value.time() == NaiveTime::MIN
-                    && value.offset().local_minus_utc() == 0,
+                value.naive_utc()
+                    == NaiveDate::from_ymd_opt(1, 1, 1)
+                        .expect("valid zero date")
+                        .and_time(NaiveTime::MIN),
             ),
         ),
         (Value::DateTime(value), "Location") => {
-            let timezone = value.named_timezone().or_else(|| {
-                (value.offset().local_minus_utc() == 0).then_some(chrono_tz::UTC)
+            let timezone = value.timezone().or_else(|| {
+                (value.offset().local_minus_utc() == 0)
+                    .then_some(TimezoneValue::named(chrono_tz::UTC))
             });
             let timezone = timezone.ok_or_else(|| {
                 Error::ExprError("fixed-offset date has no named timezone".to_string())
@@ -499,14 +512,12 @@ pub(crate) fn eval_method(receiver: Value, method: &str, args: Vec<Value>) -> cr
         (Value::DateTime(value), "UTC") => no_args(
             method,
             args,
-            Value::DateTime(value.with_timezone(chrono_tz::UTC)),
+            Value::DateTime(value.with_timezone(TimezoneValue::named(chrono_tz::UTC))),
         ),
         (Value::DateTime(value), "Local") => {
-            let local = Utc
-                .from_utc_datetime(&value.naive_utc())
-                .with_timezone(&Local)
-                .fixed_offset();
-            no_args(method, args, Value::DateTime(DateTimeValue::fixed(local)))
+            let timezone = TimezoneValue::local()
+                .map_err(|error| Error::ExprError(format!("invalid local timezone: {error}")))?;
+            no_args(method, args, Value::DateTime(value.with_timezone(timezone)))
         }
         (Value::DateTime(value), "Round") => {
             let unit = one_duration_arg(method, args)?;
@@ -600,8 +611,9 @@ fn add_date(value: DateTimeValue, years: i64, months: i64, days: i64) -> crate::
     let naive = NaiveDate::from_ymd_opt(year, month, 1)
         .and_then(|date| date.and_time(value.time()).checked_add_signed(Duration::days(day_offset)))
         .ok_or_else(|| Error::ExprError("date out of range".to_string()))?;
-    if let Some(timezone) = value.named_timezone() {
+    if let Some(timezone) = value.timezone() {
         timezone
+            .timezone()
             .from_local_datetime(&naive)
             .earliest()
             .map(|value| DateTimeValue::zoned(value, timezone))
@@ -750,4 +762,29 @@ pub(crate) fn format_datetime(value: &DateTimeValue) -> String {
     output.push(' ');
     output.push_str(&value.zone_name());
     output
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn local_location_retains_dst_rules() {
+        let timezone = TimezoneValue::local_with_timezone(chrono_tz::America::New_York);
+        let value = timezone
+            .timezone()
+            .with_ymd_and_hms(2023, 8, 14, 12, 0, 0)
+            .single()
+            .expect("valid local date");
+        let value = DateTimeValue::zoned(value, timezone);
+
+        assert_eq!(
+            eval_method(Value::DateTime(value.clone()), "Location", vec![]).unwrap(),
+            Value::Timezone(timezone)
+        );
+        assert_eq!(
+            eval_method(Value::DateTime(value), "IsDST", vec![]).unwrap(),
+            Value::Bool(true)
+        );
+    }
 }
