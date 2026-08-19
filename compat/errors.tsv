@@ -25,3 +25,4 @@ fromPairs([[[1], "value"]])
 groupBy([[1]], #)
 toJSON(fromPairs([["key", "value"]]))
 fromPairs([["a", 1]]) == {a: 1}
+fromPairs([[1, "one"]]) contains 1
