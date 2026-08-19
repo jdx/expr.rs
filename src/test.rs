@@ -394,6 +394,27 @@ fn nil_coalesce() -> Result<()> {
 #[test]
 fn range() -> Result<()> {
     test_old!("1..3 == [1, 2, 3]", "true");
+    test_old!(
+        "let start = 1; let end = 3; start..end == [1, 2, 3]",
+        "true"
+    );
+    test_old!("1 + 1..2 + 2 == [2, 3, 4]", "true");
+    Ok(())
+}
+
+#[test]
+fn dynamic_indexes_and_slices() -> Result<()> {
+    test_old!("let index = 1; [10, 20, 30][index]", "20");
+    test_old!(
+        "let start = 1; let end = 3; [10, 20, 30, 40][start:end]",
+        "[20, 30]"
+    );
+    test_old!("let end = 2; [10, 20, 30][:end]", "[10, 20]");
+    test_old!("let start = 1; b\"abcd\"[start:]", "[98 99 100]");
+    test_old!("let start = 1; let end = 3; \"abcd\"[start:end]", "\"bc\"");
+    test_old!("\"héllo\"[1:3]", "\"é\"");
+    test_old!("\"é\"[0:1]", "\"�\"");
+    test_old!("{foo: 42}.foo", "42");
     Ok(())
 }
 

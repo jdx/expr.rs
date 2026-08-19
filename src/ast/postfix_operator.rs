@@ -9,7 +9,10 @@ use std::iter::once;
 #[derive(Debug, Clone, strum::Display)]
 pub enum PostfixOperator {
     Index { idx: Box<Node>, optional: bool },
-    Range(Option<i64>, Option<i64>),
+    Range {
+        start: Option<Box<Node>>,
+        end: Option<Box<Node>>,
+    },
     Default(Box<Node>),
     Pipe(Box<Node>),
     Ternary { left: Box<Node>, right: Box<Node> },
@@ -29,7 +32,10 @@ impl PostfixOperator {
             PostfixOperator::Method { args, .. } => {
                 args.iter().any(Node::contains_hash_ident)
             }
-            PostfixOperator::Range(..) => false,
+            PostfixOperator::Range { start, end } => start
+                .iter()
+                .chain(end)
+                .any(|node| node.contains_hash_ident()),
         }
     }
 }
@@ -38,24 +44,36 @@ impl From<Pair<'_, Rule>> for PostfixOperator {
     fn from(pair: Pair<Rule>) -> Self {
         trace!("{:?}={}", pair.as_rule(), pair.as_str());
         match pair.as_rule() {
-            Rule::index_op | Rule::membership_op => PostfixOperator::Index {
+            Rule::index_op => PostfixOperator::Index {
                 idx: Box::new(pair.into_inner().into()),
                 optional: false,
             },
-            Rule::opt_index_op | Rule::opt_membership_op => PostfixOperator::Index {
+            Rule::membership_op => PostfixOperator::Index {
+                idx: Box::new(Node::Value(Value::String(
+                    pair.into_inner().next().unwrap().as_str().to_string(),
+                ))),
+                optional: false,
+            },
+            Rule::opt_index_op => PostfixOperator::Index {
                 idx: Box::new(pair.into_inner().into()),
+                optional: true,
+            },
+            Rule::opt_membership_op => PostfixOperator::Index {
+                idx: Box::new(Node::Value(Value::String(
+                    pair.into_inner().next().unwrap().as_str().to_string(),
+                ))),
                 optional: true,
             },
             Rule::range_start_op => {
                 let mut inner = pair.into_inner();
-                let start = inner.next().map(|p| p.as_str().parse().unwrap());
-                let end = inner.next().map(|p| p.as_str().parse().unwrap());
-                PostfixOperator::Range(start, end)
+                let start = inner.next().map(|p| Box::new(p.into()));
+                let end = inner.next().map(|p| Box::new(p.into()));
+                PostfixOperator::Range { start, end }
             }
             Rule::range_end_op => {
                 let mut inner = pair.into_inner();
-                let end = inner.next().map(|p| p.as_str().parse().unwrap());
-                PostfixOperator::Range(None, end)
+                let end = inner.next().map(|p| Box::new(p.into()));
+                PostfixOperator::Range { start: None, end }
             }
             Rule::default_op => PostfixOperator::Default(Box::new(pair.into_inner().into())),
             Rule::ternary => {
@@ -87,7 +105,7 @@ impl Environment<'_> {
         let value = self.eval_expr(ctx, node)?;
         let result = match operator {
             PostfixOperator::Index { idx, optional } => {
-                let key = self.eval_index_key(ctx, idx)?;
+                let key = self.eval_expr(ctx, idx)?;
                 match (&key, value) {
                     (Value::Integer(idx), Value::Array(arr)) => {
                         let idx = i64_to_idx(*idx, arr.len());
@@ -112,17 +130,27 @@ impl Environment<'_> {
                     _ => bail!("Invalid operand for operator []: {key:?}"),
                 }
             },
-            PostfixOperator::Range(start, end) => match value {
-                Value::Array(arr) => {
-                    let (start, end) = slice_bounds(*start, *end, arr.len());
-                    let result = arr.get(start..end).unwrap_or_default().to_vec();
-                    Value::Array(result)
+            PostfixOperator::Range { start, end } => {
+                let start = self.eval_slice_bound(ctx, start.as_deref())?;
+                let end = self.eval_slice_bound(ctx, end.as_deref())?;
+                match value {
+                    Value::Array(arr) => {
+                        let (start, end) = slice_bounds(start, end, arr.len());
+                        let result = arr.get(start..end).unwrap_or_default().to_vec();
+                        Value::Array(result)
+                    }
+                    Value::Bytes(bytes) => {
+                        let (start, end) = slice_bounds(start, end, bytes.len());
+                        Value::Bytes(bytes.get(start..end).unwrap_or_default().to_vec())
+                    }
+                    Value::String(string) => {
+                        let (start, end) = slice_bounds(start, end, string.len());
+                        Value::String(
+                            String::from_utf8_lossy(&string.as_bytes()[start..end]).into(),
+                        )
+                    }
+                    _ => bail!("Invalid operand for operator []"),
                 }
-                Value::Bytes(bytes) => {
-                    let (start, end) = slice_bounds(*start, *end, bytes.len());
-                    Value::Bytes(bytes.get(start..end).unwrap_or_default().to_vec())
-                }
-                _ => bail!("Invalid operand for operator []"),
             },
             PostfixOperator::Default(default) => match value {
                 Value::Nil => self.eval_expr(ctx, default)?,
@@ -160,11 +188,17 @@ impl Environment<'_> {
         Ok(result)
     }
 
-    fn eval_index_key(&self, ctx: &dyn ContextProvider, idx: &Node) -> Result<Value> {
-        match idx {
-            Node::Value(v) => Ok(v.clone()),
-            Node::Ident(id) => Ok(Value::String(id.clone())),
-            idx => self.eval_expr(ctx, idx),
+    fn eval_slice_bound(
+        &self,
+        ctx: &dyn ContextProvider,
+        bound: Option<&Node>,
+    ) -> Result<Option<i64>> {
+        match bound {
+            Some(bound) => match self.eval_expr(ctx, bound)? {
+                Value::Integer(value) => Ok(Some(value)),
+                value => bail!("Invalid slice index: {value:?}"),
+            },
+            None => Ok(None),
         }
     }
 }
