@@ -26,3 +26,6 @@ groupBy([[1]], #)
 toJSON(fromPairs([["key", "value"]]))
 fromPairs([["a", 1]]) == {a: 1}
 fromPairs([[1, "one"]]) contains 1
+date("2023-08-14").AddDate(1, 2)
+date("2023-08-14").Before("2023-08-15")
+duration("1h").Round(1)

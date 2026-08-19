@@ -14,9 +14,7 @@ fn json_value(value: ExprValue) -> JsonValue {
             .unwrap_or(JsonValue::Null),
         ExprValue::String(value) => JsonValue::String(value),
         ExprValue::Bytes(value) => JsonValue::String(STANDARD.encode(value)),
-        ExprValue::DateTime(value) => {
-            JsonValue::String(value.to_rfc3339_opts(SecondsFormat::AutoSi, true))
-        }
+        ExprValue::DateTime(value) => JsonValue::String(go_rfc3339(&value)),
         ExprValue::Duration(value) => JsonValue::Number(value.into()),
         ExprValue::Timezone(_) => JsonValue::Object(Default::default()),
         ExprValue::Month(value) | ExprValue::Weekday(value) => {
@@ -35,6 +33,23 @@ fn json_value(value: ExprValue) -> JsonValue {
                 .map(|(key, value)| JsonValue::Array(vec![json_value(key), json_value(value)]))
                 .collect(),
         ),
+    }
+}
+
+fn go_rfc3339(value: &expr::DateTimeValue) -> String {
+    let value = value.to_rfc3339_opts(SecondsFormat::Nanos, true);
+    let Some(decimal) = value.find('.') else {
+        return value;
+    };
+    let zone = value[decimal..]
+        .find(['Z', '+', '-'])
+        .map(|index| decimal + index)
+        .unwrap_or(value.len());
+    let fraction = value[decimal + 1..zone].trim_end_matches('0');
+    if fraction.is_empty() {
+        format!("{}{}", &value[..decimal], &value[zone..])
+    } else {
+        format!("{}.{}{}", &value[..decimal], fraction, &value[zone..])
     }
 }
 

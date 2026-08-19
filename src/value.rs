@@ -16,19 +16,30 @@ pub struct DateTimeValue {
     value: chrono::DateTime<chrono::FixedOffset>,
     #[cfg_attr(feature = "serde", serde(skip))]
     timezone: Option<chrono_tz::Tz>,
+    #[cfg_attr(feature = "serde", serde(skip))]
+    zone_name: Option<String>,
 }
 
 impl DateTimeValue {
     pub fn fixed(value: chrono::DateTime<chrono::FixedOffset>) -> Self {
-        Self { value, timezone: None }
+        Self { value, timezone: None, zone_name: None }
     }
 
     pub fn zoned(value: chrono::DateTime<chrono_tz::Tz>, timezone: chrono_tz::Tz) -> Self {
-        Self { value: value.fixed_offset(), timezone: Some(timezone) }
+        Self { value: value.fixed_offset(), timezone: Some(timezone), zone_name: None }
     }
 
     pub(crate) fn with_timezone(&self, timezone: chrono_tz::Tz) -> Self {
         Self::zoned(self.value.with_timezone(&timezone), timezone)
+    }
+
+    pub(crate) fn named_timezone(&self) -> Option<chrono_tz::Tz> {
+        self.timezone
+    }
+
+    pub(crate) fn with_zone_name(mut self, zone_name: String) -> Self {
+        self.zone_name = Some(zone_name);
+        self
     }
 
     pub fn checked_add_signed(mut self, duration: chrono::Duration) -> Option<Self> {
@@ -42,6 +53,9 @@ impl DateTimeValue {
     }
 
     pub(crate) fn zone_name(&self) -> String {
+        if let Some(zone_name) = &self.zone_name {
+            return zone_name.clone();
+        }
         if let Some(timezone) = self.timezone {
             self.value.with_timezone(&timezone).format("%Z").to_string()
         } else if self.value.offset().local_minus_utc() == 0 {
