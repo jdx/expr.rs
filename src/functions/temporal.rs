@@ -283,12 +283,12 @@ fn go_layout_to_chrono(layout: &str) -> String {
     let mut output = String::new();
     let mut remaining = layout;
     while !remaining.is_empty() {
-        if output.ends_with("%S")
-            && let Some((separator, digits)) = fractional_layout(remaining)
-        {
-            output.push_str("%.f");
-            remaining = &remaining[separator.len_utf8() + digits..];
-            continue;
+        if output.ends_with("%S") {
+            if let Some((separator, digits)) = fractional_layout(remaining) {
+                output.push_str("%.f");
+                remaining = &remaining[separator.len_utf8() + digits..];
+                continue;
+            }
         }
         if let Some((token, replacement)) = replacements
             .iter()
@@ -314,25 +314,25 @@ fn format_go_layout(value: &DateTimeValue, layout: &str) -> String {
     let mut chrono_layout = String::new();
     let mut remaining = layout;
     while !remaining.is_empty() {
-        if go_layout_to_chrono(&chrono_layout).ends_with("%S")
-            && let Some((separator, digits)) = fractional_layout(remaining)
-        {
-            output.push_str(&value.format(&go_layout_to_chrono(&chrono_layout)).to_string());
-            chrono_layout.clear();
-            let nanos = format!("{:09}", value.nanosecond());
-            let pattern = &remaining[separator.len_utf8()..separator.len_utf8() + digits];
-            let mut fraction = nanos[..digits].to_string();
-            if pattern.starts_with('9') {
-                while fraction.ends_with('0') {
-                    fraction.pop();
+        if go_layout_to_chrono(&chrono_layout).ends_with("%S") {
+            if let Some((separator, digits)) = fractional_layout(remaining) {
+                output.push_str(&value.format(&go_layout_to_chrono(&chrono_layout)).to_string());
+                chrono_layout.clear();
+                let nanos = format!("{:09}", value.nanosecond());
+                let pattern = &remaining[separator.len_utf8()..separator.len_utf8() + digits];
+                let mut fraction = nanos[..digits].to_string();
+                if pattern.starts_with('9') {
+                    while fraction.ends_with('0') {
+                        fraction.pop();
+                    }
                 }
+                if !fraction.is_empty() || pattern.starts_with('0') {
+                    output.push(separator);
+                    output.push_str(&fraction);
+                }
+                remaining = &remaining[separator.len_utf8() + digits..];
+                continue;
             }
-            if !fraction.is_empty() || pattern.starts_with('0') {
-                output.push(separator);
-                output.push_str(&fraction);
-            }
-            remaining = &remaining[separator.len_utf8() + digits..];
-            continue;
         }
         let special = [
             "Z07:00:00", "-07:00:00", "Z070000", "-070000", "Z07:00", "-07:00",
