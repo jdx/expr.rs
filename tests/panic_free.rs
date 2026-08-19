@@ -36,3 +36,22 @@ fn split_after_handles_zero_and_negative_limits() {
         expr::Value::Array(vec!["a,".into(), "b".into()])
     );
 }
+
+#[test]
+fn operator_edge_cases_do_not_panic() {
+    let context = Context::default();
+    for expression in [
+        "1 % 0",
+        "[1, 2][2:1]",
+        "[1, 2][99:]",
+        "[1, 2][-99:]",
+        "-(-9223372036854775807 - 1)",
+        "(-9223372036854775807 - 1) % -1",
+        "-(duration(\"-128ns\") * 72057594037927936)",
+    ] {
+        assert!(
+            std::panic::catch_unwind(|| eval(expression, &context)).is_ok(),
+            "{expression:?} panicked"
+        );
+    }
+}
