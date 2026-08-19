@@ -5,22 +5,16 @@ Implementation of [expr](https://expr-lang.org/) in rust.
 ## Project status
 
 `expr-lang` is actively maintained for use in [mise](https://mise.jdx.dev/) and
-other Rust applications. The next release will be v2.
+other Rust applications.
 
-`expr-lang` implements the core expr syntax and built-ins used by mise. Version
-2 targets Go-compatible runtime semantics and is expanding toward complete
-expression-language parity. Go-specific reflection, static type checking,
-optimization, and bytecode execution are outside that compatibility target.
+`expr-lang` implements expr syntax and built-ins with Go-compatible runtime
+semantics and a small embeddable Rust API.
 
-The v2 compatibility profile covers nil, booleans, integers, floats, strings,
-bytes, arrays, maps with arbitrary keys, dates, durations, and timezones.
+Go-specific reflection and static type checking are not implemented. Rust
+strings must contain valid UTF-8, so string slices that split a Unicode code
+point use the replacement character instead of preserving invalid bytes.
 
-Evaluation is currently tree-walking. Bytecode compilation is not planned for
-v2; correctness, compatibility, and a small embeddable API take priority. A
-bytecode backend could be considered later if real-world profiling shows that
-evaluation itself is a bottleneck.
-
-See [MIGRATION.md](MIGRATION.md) when upgrading from v1 to v2.
+See [MIGRATION.md](MIGRATION.md) when upgrading from v1.
 
 ## Usage
 
