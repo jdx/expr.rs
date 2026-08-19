@@ -20,6 +20,11 @@ pub fn add_misc_functions(env: &mut Environment) {
             Value::Float(_) => "float",
             Value::String(_) => "string",
             Value::Bytes(_) => "array",
+            Value::DateTime(_) => "time.Time",
+            Value::Duration(_) => "time.Duration",
+            Value::Timezone(_) => "time.Location",
+            Value::Month(_) => "time.Month",
+            Value::Weekday(_) => "time.Weekday",
             Value::Array(_) => "array",
             Value::Map(_) => "map",
         };

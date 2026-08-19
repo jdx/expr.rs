@@ -5,10 +5,11 @@ expr    =  { prefix? ~ term ~ postfix* ~ (infix ~ prefix? ~ term ~ postfix*)* }
 
 prefix  = _{ negation_op | sign_op }
 infix   = _{ exponent_op | multiplication_op | addition_op | comparison_op | equal_op | and_op | or_op | not_in_op | string_op }
-postfix = _{ ternary | range_start_op | range_end_op | opt_membership_op | opt_index_op | membership_op | index_op | default_op | pipe }
+postfix = _{ ternary | range_start_op | range_end_op | method_call | opt_membership_op | opt_index_op | membership_op | index_op | default_op | pipe }
 
 func                   =  { ident ~ "(" ~ (expr ~ ("," ~ expr)*)? ~ (","? ~ predicate ~ ("," ~ expr)*)? ~ ")" }
 pipe                   =  { "|" ~ func }
+method_call            =  { "." ~ ident ~ "(" ~ (expr ~ ("," ~ expr)*)? ~ ")" }
 predicate              =  { "." ~ ident | "{" ~ program ~ "}" }
 term                   = _{ conditional_if | func | range | value | ident | array | map | "(" ~ expr ~ ")" }
 conditional_if         =  { if_keyword ~ expr ~ block ~ else_keyword ~ (conditional_if | block) }

@@ -2,7 +2,7 @@ use crate::ast::node::Node;
 use crate::ast::program::Program;
 use crate::context::ContextScope;
 use crate::functions::{
-    array, bitwise, collection, convert, json, misc, number, string, ExprCall, Function,
+    array, bitwise, collection, convert, json, misc, number, string, temporal, ExprCall, Function,
 };
 use crate::parser::compile;
 use crate::{bail, ContextProvider, Result, Value};
@@ -73,6 +73,7 @@ impl<'a> Environment<'a> {
             functions: IndexMap::new(),
         };
         string::add_string_functions(&mut p);
+        temporal::add_temporal_functions(&mut p);
         array::add_array_functions(&mut p);
         bitwise::add_bitwise_functions(&mut p);
         collection::add_collection_functions(&mut p);

@@ -13,8 +13,8 @@ expression-language parity. Go-specific reflection, static type checking,
 optimization, and bytecode execution are outside that compatibility target.
 
 The v2 compatibility profile covers nil, booleans, integers, floats, strings,
-bytes, arrays, and string-keyed maps. Date/time values and non-string map keys
-are not yet supported.
+bytes, arrays, string-keyed maps, dates, durations, and timezones. Non-string
+map keys are not yet supported.
 
 Evaluation is currently tree-walking. Bytecode compilation is not planned for
 v2; correctness, compatibility, and a small embeddable API take priority. A

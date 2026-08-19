@@ -41,6 +41,14 @@ fn value_to_json(value: &Value) -> serde_json::Value {
         }
         Value::String(s) => serde_json::Value::String(s.clone()),
         Value::Bytes(bytes) => serde_json::Value::String(STANDARD.encode(bytes)),
+        Value::DateTime(value) => serde_json::Value::String(
+            crate::functions::temporal::date_to_rfc3339(value),
+        ),
+        Value::Duration(value) => serde_json::Value::Number((*value).into()),
+        Value::Timezone(_) => serde_json::Value::Object(Default::default()),
+        Value::Month(value) | Value::Weekday(value) => {
+            serde_json::Value::Number((*value).into())
+        }
         Value::Array(arr) => {
             serde_json::Value::Array(arr.iter().map(value_to_json).collect())
         }

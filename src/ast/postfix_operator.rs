@@ -13,6 +13,7 @@ pub enum PostfixOperator {
     Default(Box<Node>),
     Pipe(Box<Node>),
     Ternary { left: Box<Node>, right: Box<Node> },
+    Method { ident: String, args: Vec<Node> },
 }
 
 impl PostfixOperator {
@@ -24,6 +25,9 @@ impl PostfixOperator {
             }
             PostfixOperator::Ternary { left, right } => {
                 left.contains_hash_ident() || right.contains_hash_ident()
+            }
+            PostfixOperator::Method { args, .. } => {
+                args.iter().any(Node::contains_hash_ident)
             }
             PostfixOperator::Range(..) => false,
         }
@@ -61,6 +65,13 @@ impl From<Pair<'_, Rule>> for PostfixOperator {
                 PostfixOperator::Ternary { left, right }
             }
             Rule::pipe => PostfixOperator::Pipe(Box::new(pair.into_inner().into())),
+            Rule::method_call => {
+                let mut inner = pair.into_inner();
+                PostfixOperator::Method {
+                    ident: inner.next().expect("method name").as_str().to_string(),
+                    args: inner.map(Node::from).collect(),
+                }
+            }
             rule => unreachable!("Unexpected rule: {rule:?}"),
         }
     }
@@ -133,6 +144,13 @@ impl Environment<'_> {
                 } else {
                     bail!("Invalid operand for operator |");
                 }
+            }
+            PostfixOperator::Method { ident, args } => {
+                let args = args
+                    .iter()
+                    .map(|arg| self.eval_expr(ctx, arg))
+                    .collect::<Result<Vec<_>>>()?;
+                crate::functions::temporal::eval_method(value, ident, args)?
             }
         };
 

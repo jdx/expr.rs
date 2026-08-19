@@ -43,7 +43,7 @@ pub use crate::parser::compile;
 #[allow(deprecated)]
 pub use crate::parser::Parser;
 pub use crate::ast::program::Program;
-pub use crate::value::Value;
+pub use crate::value::{DateTimeValue, Value};
 #[cfg(feature = "serde")]
 pub use crate::serde::{from_value, to_value};
 
