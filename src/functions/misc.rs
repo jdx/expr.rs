@@ -1,7 +1,6 @@
 use crate::{Environment, Error, Value, bail};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
-use indexmap::IndexMap;
 
 fn one_argument(name: &str, mut args: Vec<Value>) -> crate::Result<Value> {
     if args.len() != 1 {
@@ -68,7 +67,7 @@ pub fn add_misc_functions(env: &mut Environment) {
             }
             (Value::KeyedMap(values), key) => Ok(values
                 .iter()
-                .find(|(candidate, _)| crate::ast::operator::values_equal(candidate, key))
+                .find(|(candidate, _)| crate::ast::operator::map_keys_equal(candidate, key))
                 .map(|(_, value)| value.clone())
                 .unwrap_or_default()),
             _ => bail!("get() takes an array or bytes and integer, or a map and key"),
@@ -117,8 +116,11 @@ pub fn add_misc_functions(env: &mut Environment) {
                         let mut pair = pair.into_iter();
                         let key = pair.next().expect("length checked");
                         let value = pair.next().expect("length checked");
+                        if !crate::ast::operator::is_comparable_map_key(&key) {
+                            bail!("fromPairs() map key is not comparable");
+                        }
                         if let Some((_, existing)) = values.iter_mut().find(|(candidate, _)| {
-                            crate::ast::operator::values_equal(candidate, &key)
+                            crate::ast::operator::map_keys_equal(candidate, &key)
                         }) {
                             *existing = value;
                         } else {
@@ -128,14 +130,7 @@ pub fn add_misc_functions(env: &mut Environment) {
                     _ => bail!("fromPairs() expects an array of two-element arrays"),
                 }
             }
-            if values.iter().all(|(key, _)| matches!(key, Value::String(_))) {
-                Ok(Value::Map(values.into_iter().map(|(key, value)| {
-                    let Value::String(key) = key else { unreachable!("checked") };
-                    (key, value)
-                }).collect::<IndexMap<_, _>>()))
-            } else {
-                Ok(Value::KeyedMap(values))
-            }
+            Ok(Value::KeyedMap(values))
         }
         _ => bail!("fromPairs() takes an array as the argument"),
     });

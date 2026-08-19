@@ -1,5 +1,4 @@
 use crate::{bail, Environment, Value};
-use indexmap::IndexMap;
 
 fn add_sum(total: Value, value: Value) -> crate::Result<Value> {
     match (total, value) {
@@ -295,19 +294,28 @@ pub fn add_array_functions(env: &mut Environment) {
             bail!("groupBy() takes exactly two arguments");
         }
         if let (Value::Array(a), Some(predicate)) = (&c.args[0], c.predicate) {
-            let mut groups = IndexMap::new();
+            let mut groups: Vec<(Value, Vec<Value>)> = Vec::new();
             for value in a {
-                if let Some(key) = c
+                let key = c
                     .env
-                    .run_with_binding(predicate, c.ctx, "#", value.clone())?
-                    .as_string()
-                {
-                    groups.entry(key.to_string()).or_insert_with(Vec::new).push(value.clone());
+                    .run_with_binding(predicate, c.ctx, "#", value.clone())?;
+                if !crate::ast::operator::is_comparable_map_key(&key) {
+                    bail!("groupBy() predicate returned a non-comparable key");
+                }
+                if let Some((_, group)) = groups.iter_mut().find(|(candidate, _)| {
+                    crate::ast::operator::map_keys_equal(candidate, &key)
+                }) {
+                    group.push(value.clone());
                 } else {
-                    bail!("groupBy() predicate must return a string");
+                    groups.push((key, vec![value.clone()]));
                 }
             }
-            Ok(Value::Map(groups.into_iter().map(|(k, group)| (k, group.into())).collect()))
+            Ok(Value::KeyedMap(
+                groups
+                    .into_iter()
+                    .map(|(key, group)| (key, Value::Array(group)))
+                    .collect(),
+            ))
         } else {
             bail!("groupBy() takes an array as the first argument and a predicate as the second argument");
         }
