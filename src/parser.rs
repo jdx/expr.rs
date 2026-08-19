@@ -74,6 +74,14 @@ mod literal_tests {
             assert!(compile(code).is_err(), "{code} should be rejected");
         }
     }
+
+    #[test]
+    fn rejects_raw_newlines_in_interpreted_literals() {
+        for code in ["\"a\nb\"", "'a\rb'", "b\"a\nb\"", "b'a\rb'"] {
+            assert!(compile(code).is_err(), "{code:?} should be rejected");
+        }
+        assert!(compile("`a\nb`").is_ok());
+    }
 }
 
 /// Main struct for parsing and evaluating expr programs

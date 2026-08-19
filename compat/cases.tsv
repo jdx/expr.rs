@@ -115,3 +115,19 @@ reduce([1, 2, 3], {#acc + #}, 10)	16
 1_000.5_0e-2	10.005
 map([10, 20, 30], #index)	[0,1,2]
 reduce([10, 20, 30], #acc + #index, 0)	3
+b"abc"	"YWJj"
+b'\xff\x00'	"/wA="
+b"ÿ"	"w78="
+len(b"abc")	3
+b"abc"[0]	97
+b"abc"[-1]	99
+get(b"abc", 0)	97
+get(b"abc", -1)	99
+b"abc"[1:]	"YmM="
+b"abc"[99:]	""
+b"abc"[-99:]	"YWJj"
+b"abc"[2:1]	""
+b"abc" == b"abc"	true
+b"abc" != b"abd"	true
+string(b"abc")	"[97 98 99]"
+toJSON(b"abc")	"\"YWJj\""

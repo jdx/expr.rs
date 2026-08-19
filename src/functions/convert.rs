@@ -79,6 +79,10 @@ fn expr_string(value: &Value) -> String {
         Value::Bool(value) => value.to_string(),
         Value::Nil => "<nil>".to_string(),
         Value::String(value) => value.clone(),
+        Value::Bytes(values) => format!(
+            "[{}]",
+            values.iter().map(u8::to_string).collect::<Vec<_>>().join(" ")
+        ),
         Value::Array(values) => format!(
             "[{}]",
             values.iter().map(expr_string).collect::<Vec<_>>().join(" ")

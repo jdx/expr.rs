@@ -30,17 +30,20 @@ and_op            =  { "&&" | "and" }
 or_op             =  { "||" | "or" }
 string_op         =  { "in" | "contains" | "startsWith" | "endsWith" | "matches" }
 
-value            =  { string | string_multiline | decimal | int | bool | nil }
-array            =  { "[" ~ (expr ~ ("," ~ expr)* ~ ","?)? ~ "]" }
-map              =  { "{" ~ (map_key ~ ":" ~ expr ~ ("," ~ map_key ~ ":" ~ expr)* ~ ","?)? ~ "}" }
-map_key          = _{ ident | string }
-range            =  { value ~ ".." ~ value }
-string           = ${ ("\"" ~ inner_double ~ "\"" | "'" ~ inner_single ~ "'") }
-string_multiline = ${ "`" ~ inner_multiline ~ "`" }
-inner_single     = @{ char_single* }
-inner_double     = @{ char_double* }
-inner_multiline  = @{ (!"`" ~ ANY)* }
-int              = @{
+value              =  { bytes | string | string_multiline | decimal | int | bool | nil }
+array              =  { "[" ~ (expr ~ ("," ~ expr)* ~ ","?)? ~ "]" }
+map                =  { "{" ~ (map_key ~ ":" ~ expr ~ ("," ~ map_key ~ ":" ~ expr)* ~ ","?)? ~ "}" }
+map_key            = _{ ident | string }
+range              =  { value ~ ".." ~ value }
+string             = ${ ("\"" ~ inner_double ~ "\"" | "'" ~ inner_single ~ "'") }
+bytes              = ${ ("b" | "B") ~ ("\"" ~ inner_bytes_double ~ "\"" | "'" ~ inner_bytes_single ~ "'") }
+string_multiline   = ${ "`" ~ inner_multiline ~ "`" }
+inner_single       = @{ char_single* }
+inner_double       = @{ char_double* }
+inner_bytes_single = @{ char_bytes_single* }
+inner_bytes_double = @{ char_bytes_double* }
+inner_multiline    = @{ (!"`" ~ ANY)* }
+int                = @{
     "0x" ~ "_"? ~ ASCII_HEX_DIGIT ~ ("_"? ~ ASCII_HEX_DIGIT)*
   | "0X" ~ "_"? ~ ASCII_HEX_DIGIT ~ ("_"? ~ ASCII_HEX_DIGIT)*
   | "0o" ~ "_"? ~ ASCII_OCT_DIGIT ~ ("_"? ~ ASCII_OCT_DIGIT)*
@@ -49,30 +52,42 @@ int              = @{
   | "0B" ~ "_"? ~ ("0" | "1") ~ ("_"? ~ ("0" | "1"))*
   | ASCII_DIGIT ~ ("_"? ~ ASCII_DIGIT)*
 }
-bool             =  { "true" | "false" }
-nil              =  { "nil" }
-decimal          = @{
+bool               =  { "true" | "false" }
+nil                =  { "nil" }
+decimal            = @{
     decimal_digits ~ "." ~ !"." ~ decimal_digits? ~ exponent?
   | "." ~ decimal_digits ~ exponent?
   | decimal_digits ~ exponent
 }
-decimal_digits   = _{ ASCII_DIGIT ~ ("_"? ~ ASCII_DIGIT)* }
-exponent         = _{ ("e" | "E") ~ ("+" | "-")? ~ decimal_digits }
+decimal_digits     = _{ ASCII_DIGIT ~ ("_"? ~ ASCII_DIGIT)* }
+exponent           = _{ ("e" | "E") ~ ("+" | "-")? ~ decimal_digits }
 
 not_in_op = @{ "not" ~ WHITESPACE+ ~ "in" }
 
-ident         = @{ "#" ~ (ASCII_ALPHANUMERIC | "_")* | (("$" | ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")*) }
-char_single   =  {
-    !("'" | "\\") ~ ANY
+ident             = @{ "#" ~ (ASCII_ALPHANUMERIC | "_")* | (("$" | ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")*) }
+char_single       =  {
+    !("'" | "\\" | "\r" | "\n") ~ ANY
   | "\\" ~ ("'" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
   | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
-char_double   =  {
-    !("\"" | "\\") ~ ANY
+char_double       =  {
+    !("\"" | "\\" | "\r" | "\n") ~ ANY
   | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
   | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
-LINE_COMMENT  = _{ "//" ~ (!"\n" ~ ANY)* }
-BLOCK_COMMENT = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
-COMMENT       = _{ LINE_COMMENT | BLOCK_COMMENT }
-WHITESPACE    = _{ " " | "\t" | "\r" | "\n" }
+char_bytes_single =  {
+    !("'" | "\\" | "\r" | "\n") ~ ANY
+  | "\\" ~ ("'" | "\\" | "a" | "b" | "f" | "n" | "r" | "t" | "v")
+  | "\\x" ~ ASCII_HEX_DIGIT{2}
+  | "\\" ~ ("0" | "1" | "2" | "3") ~ ASCII_OCT_DIGIT{2}
+}
+char_bytes_double =  {
+    !("\"" | "\\" | "\r" | "\n") ~ ANY
+  | "\\" ~ ("\"" | "\\" | "a" | "b" | "f" | "n" | "r" | "t" | "v")
+  | "\\x" ~ ASCII_HEX_DIGIT{2}
+  | "\\" ~ ("0" | "1" | "2" | "3") ~ ASCII_OCT_DIGIT{2}
+}
+LINE_COMMENT      = _{ "//" ~ (!"\n" ~ ANY)* }
+BLOCK_COMMENT     = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
+COMMENT           = _{ LINE_COMMENT | BLOCK_COMMENT }
+WHITESPACE        = _{ " " | "\t" | "\r" | "\n" }

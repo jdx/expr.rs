@@ -1,4 +1,6 @@
 use expr::{eval, Context, Value as ExprValue};
+use base64::Engine;
+use base64::engine::general_purpose::STANDARD;
 use serde_json::{Map, Number, Value as JsonValue};
 
 fn json_value(value: ExprValue) -> JsonValue {
@@ -10,6 +12,7 @@ fn json_value(value: ExprValue) -> JsonValue {
             .map(JsonValue::Number)
             .unwrap_or(JsonValue::Null),
         ExprValue::String(value) => JsonValue::String(value),
+        ExprValue::Bytes(value) => JsonValue::String(STANDARD.encode(value)),
         ExprValue::Array(values) => JsonValue::Array(values.into_iter().map(json_value).collect()),
         ExprValue::Map(values) => JsonValue::Object(
             values

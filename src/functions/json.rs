@@ -1,6 +1,8 @@
 use serde_json;
 
 use crate::{bail, Environment, Value};
+use base64::Engine;
+use base64::engine::general_purpose::STANDARD;
 
 /// Convert a serde_json::Value to an expr::Value
 fn json_to_value(json: serde_json::Value) -> Value {
@@ -38,6 +40,7 @@ fn value_to_json(value: &Value) -> serde_json::Value {
                 .unwrap_or(serde_json::Value::Null)
         }
         Value::String(s) => serde_json::Value::String(s.clone()),
+        Value::Bytes(bytes) => serde_json::Value::String(STANDARD.encode(bytes)),
         Value::Array(arr) => {
             serde_json::Value::Array(arr.iter().map(value_to_json).collect())
         }
@@ -114,6 +117,7 @@ pub fn add_json_functions(env: &mut Environment) {
         match &c.args[0] {
             Value::Array(a) => Ok(Value::Integer(a.len() as i64)),
             Value::String(s) => Ok(Value::Integer(s.len() as i64)),
+            Value::Bytes(bytes) => Ok(Value::Integer(bytes.len() as i64)),
             Value::Map(m) => Ok(Value::Integer(m.len() as i64)),
             _ => bail!("len() takes an array, string, or map as the argument"),
         }

@@ -19,6 +19,8 @@ pub enum Value {
     Nil,
     String(String),
     Array(Vec<Value>),
+    // Keep Bytes after Array so untagged serde treats JSON integer arrays as arrays.
+    Bytes(Vec<u8>),
     Map(IndexMap<String, Value>),
 }
 
@@ -62,6 +64,13 @@ impl Value {
     pub fn as_string(&self) -> Option<&str> {
         match self {
             Value::String(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn as_bytes(&self) -> Option<&[u8]> {
+        match self {
+            Value::Bytes(bytes) => Some(bytes),
             _ => None,
         }
     }
@@ -178,6 +187,15 @@ impl Display for Value {
                     .replace("\t", "\\t")
                     .replace("\"", "\\\"")
             ),
+            Value::Bytes(bytes) => write!(
+                f,
+                "[{}]",
+                bytes
+                    .iter()
+                    .map(u8::to_string)
+                    .collect::<Vec<String>>()
+                    .join(" ")
+            ),
             Value::Array(a) => write!(
                 f,
                 "[{}]",
@@ -217,6 +235,7 @@ impl From<Pair<'_, Rule>> for Value {
             Rule::decimal => {
                 Value::Float(Value::parse_float(pair.as_str()).expect("literal validated"))
             }
+            Rule::bytes => Value::Bytes(parse_bytes_literal(pair.as_str())),
             Rule::string_multiline => pair.into_inner().as_str().into(),
             Rule::string => pair
                 .into_inner()
@@ -241,4 +260,51 @@ impl From<Pair<'_, Rule>> for Value {
             rule => unreachable!("Unexpected rule: {rule:?} {}", pair.as_str()),
         }
     }
+}
+
+fn parse_bytes_literal(literal: &str) -> Vec<u8> {
+    let mut chars = literal[2..literal.len() - 1].chars();
+    let mut bytes = Vec::new();
+    while let Some(character) = chars.next() {
+        if character != '\\' {
+            let mut encoded = [0; 4];
+            bytes.extend_from_slice(character.encode_utf8(&mut encoded).as_bytes());
+            continue;
+        }
+
+        let escape = chars.next().expect("byte escape validated by grammar");
+        match escape {
+            'a' => bytes.push(7),
+            'b' => bytes.push(8),
+            'f' => bytes.push(12),
+            'n' => bytes.push(b'\n'),
+            'r' => bytes.push(b'\r'),
+            't' => bytes.push(b'\t'),
+            'v' => bytes.push(11),
+            '\\' | '\'' | '"' => bytes.push(escape as u8),
+            'x' => {
+                let digits = [
+                    chars.next().expect("hex escape validated by grammar"),
+                    chars.next().expect("hex escape validated by grammar"),
+                ];
+                bytes.push(
+                    u8::from_str_radix(&digits.iter().collect::<String>(), 16)
+                        .expect("hex escape validated by grammar"),
+                );
+            }
+            digit @ '0'..='7' => {
+                let digits = [
+                    digit,
+                    chars.next().expect("octal escape validated by grammar"),
+                    chars.next().expect("octal escape validated by grammar"),
+                ];
+                bytes.push(
+                    u8::from_str_radix(&digits.iter().collect::<String>(), 8)
+                        .expect("octal escape validated by grammar"),
+                );
+            }
+            _ => unreachable!("byte escape validated by grammar"),
+        }
+    }
+    bytes
 }
