@@ -7,28 +7,34 @@ prefix  = _{ negation_op | sign_op }
 infix   = _{ exponent_op | multiplication_op | addition_op | comparison_op | equal_op | and_op | or_op | not_in_op | string_op }
 postfix = _{ ternary | range_start_op | range_end_op | opt_membership_op | opt_index_op | membership_op | index_op | default_op | pipe }
 
-func              =  { ident ~ "(" ~ (expr ~ ("," ~ expr)*)? ~ (","? ~ predicate ~ ("," ~ expr)*)? ~ ")" }
-pipe              =  { "|" ~ func }
-predicate         =  { "." ~ ident | "{" ~ program ~ "}" }
-term              = _{ func | range | value | ident | array | map | "(" ~ expr ~ ")" }
-ternary           =  { "?" ~ expr ~ ":" ~ expr }
-membership_op     =  { "." ~ ident }
-opt_membership_op =  { "?." ~ ident }
-opt_index_op      =  { "?." ~ "[" ~ expr ~ "]" }
-default_op        =  { "??" ~ expr }
-index_op          =  { "[" ~ expr ~ "]" }
-range_start_op    =  { "[" ~ expr ~ ":" ~ expr? ~ "]" }
-range_end_op      =  { "[" ~ ":" ~ expr? ~ "]" }
-negation_op       =  { "!" | "not" }
-sign_op           =  { "+" | "-" }
-exponent_op       =  { "**" | "^" }
-multiplication_op =  { "*" | "/" | "%" }
-addition_op       =  { "+" | "-" }
-comparison_op     =  { "<=" | ">=" | "<" | ">" }
-equal_op          =  { "==" | "!=" }
-and_op            =  { "&&" | "and" }
-or_op             =  { "||" | "or" }
-string_op         =  { "in" | "contains" | "startsWith" | "endsWith" | "matches" }
+func                   =  { ident ~ "(" ~ (expr ~ ("," ~ expr)*)? ~ (","? ~ predicate ~ ("," ~ expr)*)? ~ ")" }
+pipe                   =  { "|" ~ func }
+predicate              =  { "." ~ ident | "{" ~ program ~ "}" }
+term                   = _{ conditional_if | func | range | value | ident | array | map | "(" ~ expr ~ ")" }
+conditional_if         =  { if_keyword ~ expr ~ block ~ else_keyword ~ (conditional_if | block) }
+if_keyword             = _{ !if_identifier_prefix ~ "if" }
+else_keyword           = _{ !else_identifier_prefix ~ "else" }
+if_identifier_prefix   = @{ "if" ~ (ASCII_ALPHANUMERIC | "_") }
+else_identifier_prefix = @{ "else" ~ (ASCII_ALPHANUMERIC | "_") }
+block                  =  { "{" ~ program ~ "}" }
+ternary                =  { "?" ~ expr ~ ":" ~ expr }
+membership_op          =  { "." ~ ident }
+opt_membership_op      =  { "?." ~ ident }
+opt_index_op           =  { "?." ~ "[" ~ expr ~ "]" }
+default_op             =  { "??" ~ expr }
+index_op               =  { "[" ~ expr ~ "]" }
+range_start_op         =  { "[" ~ expr ~ ":" ~ expr? ~ "]" }
+range_end_op           =  { "[" ~ ":" ~ expr? ~ "]" }
+negation_op            =  { "!" | "not" }
+sign_op                =  { "+" | "-" }
+exponent_op            =  { "**" | "^" }
+multiplication_op      =  { "*" | "/" | "%" }
+addition_op            =  { "+" | "-" }
+comparison_op          =  { "<=" | ">=" | "<" | ">" }
+equal_op               =  { "==" | "!=" }
+and_op                 =  { "&&" | "and" }
+or_op                  =  { "||" | "or" }
+string_op              =  { "in" | "contains" | "startsWith" | "endsWith" | "matches" }
 
 value              =  { bytes | string | string_multiline | decimal | int | bool | nil }
 array              =  { "[" ~ (expr ~ ("," ~ expr)* ~ ","?)? ~ "]" }

@@ -82,6 +82,13 @@ mod literal_tests {
         }
         assert!(compile("`a\nb`").is_ok());
     }
+
+    #[test]
+    fn conditional_keywords_require_identifier_boundaries() {
+        assert!(compile("if true { 1 } else { 2 }").is_ok());
+        assert!(compile("ifx { 1 } else { 2 }").is_err());
+        assert!(compile("if true { 1 } elseif { 2 }").is_err());
+    }
 }
 
 /// Main struct for parsing and evaluating expr programs

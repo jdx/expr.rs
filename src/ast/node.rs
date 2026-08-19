@@ -29,6 +29,11 @@ pub enum Node {
         operator: PostfixOperator,
         node: Box<Node>,
     },
+    Conditional {
+        condition: Box<Node>,
+        consequent: Box<Program>,
+        alternative: Box<Program>,
+    },
 }
 
 impl Node {
@@ -50,6 +55,13 @@ impl Node {
             }
             Node::Array(items) => items.iter().any(|i| i.contains_hash_ident()),
             Node::Range(a, b) => a.contains_hash_ident() || b.contains_hash_ident(),
+            Node::Conditional { condition, consequent, alternative } => {
+                condition.contains_hash_ident()
+                    || consequent.lines.iter().any(|(_, node)| node.contains_hash_ident())
+                    || consequent.expr.contains_hash_ident()
+                    || alternative.lines.iter().any(|(_, node)| node.contains_hash_ident())
+                    || alternative.expr.contains_hash_ident()
+            }
             Node::Value(_) => false,
         }
     }
@@ -110,6 +122,13 @@ impl From<Pair<'_, Rule>> for Node {
             Rule::expr => pair.into_inner().into(),
             Rule::value => Node::Value(pair.into_inner().into()),
             Rule::ident => Node::Ident(pair.as_str().to_string()),
+            Rule::conditional_if => {
+                let mut inner = pair.into_inner();
+                let condition = Box::new(inner.next().expect("condition").into());
+                let consequent = Box::new(program_from_branch(inner.next().expect("consequent")));
+                let alternative = Box::new(program_from_branch(inner.next().expect("alternative")));
+                Node::Conditional { condition, consequent, alternative }
+            }
             Rule::func => {
                 let mut inner = pair.into_inner();
                 let ident = inner.next().unwrap().as_str().to_string();
@@ -187,5 +206,16 @@ impl From<Pair<'_, Rule>> for Node {
             }
             rule => unreachable!("Unexpected rule: {rule:?}"),
         }
+    }
+}
+
+fn program_from_branch(pair: Pair<'_, Rule>) -> Program {
+    match pair.as_rule() {
+        Rule::block => pair.into_inner().into(),
+        Rule::conditional_if => Program {
+            lines: Vec::new(),
+            expr: pair.into(),
+        },
+        rule => unreachable!("Unexpected conditional branch: {rule:?}"),
     }
 }
