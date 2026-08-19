@@ -144,7 +144,7 @@ pub fn add_json_functions(env: &mut Environment) {
         }
         match &c.args[0] {
             Value::Array(a) => Ok(Value::Integer(a.len() as i64)),
-            Value::String(s) => Ok(Value::Integer(s.len() as i64)),
+            Value::String(s) => Ok(Value::Integer(s.chars().count() as i64)),
             Value::Bytes(bytes) => Ok(Value::Integer(bytes.len() as i64)),
             Value::Map(m) => Ok(Value::Integer(m.len() as i64)),
             Value::KeyedMap(m) => Ok(Value::Integer(m.len() as i64)),

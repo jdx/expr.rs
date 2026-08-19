@@ -83,7 +83,10 @@ pub fn add_collection_functions(env: &mut Environment) {
     env.add_function("uniq", |call| {
         let mut output = Vec::new();
         for value in one_array("uniq", call.args)? {
-            if !output.contains(&value) {
+            if !output
+                .iter()
+                .any(|candidate| crate::ast::operator::values_equal(candidate, &value))
+            {
                 output.push(value);
             }
         }

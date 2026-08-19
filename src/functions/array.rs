@@ -3,7 +3,9 @@ use indexmap::IndexMap;
 
 fn add_sum(total: Value, value: Value) -> crate::Result<Value> {
     match (total, value) {
-        (Value::Integer(total), Value::Integer(value)) => Ok(Value::Integer(total + value)),
+        (Value::Integer(total), Value::Integer(value)) => {
+            Ok(Value::Integer(total.wrapping_add(value)))
+        }
         (Value::Integer(total), Value::Float(value)) => Ok(Value::Float(total as f64 + value)),
         (Value::Float(total), Value::Integer(value)) => Ok(Value::Float(total + value as f64)),
         (Value::Float(total), Value::Float(value)) => Ok(Value::Float(total + value)),

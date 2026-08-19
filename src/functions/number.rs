@@ -98,10 +98,7 @@ pub fn add_number_functions(env: &mut Environment) {
     env.add_function("max", |call| extrema("max", call.args, true));
     env.add_function("min", |call| extrema("min", call.args, false));
     env.add_function("abs", |call| match one_number("abs", call.args)? {
-        Value::Integer(value) => value
-            .checked_abs()
-            .map(Value::Integer)
-            .ok_or_else(|| "abs() integer overflow".to_string().into()),
+        Value::Integer(value) => Ok(Value::Integer(value.wrapping_abs())),
         Value::Float(value) => Ok(Value::Float(value.abs())),
         _ => unreachable!("validated numeric argument"),
     });
