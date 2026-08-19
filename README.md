@@ -14,7 +14,7 @@ optimization, and bytecode execution are outside that compatibility target.
 
 The v2 compatibility profile covers nil, booleans, integers, floats, strings,
 arrays, and string-keyed maps. Bytes, date/time values, non-string map keys,
-multiline `if`/`else`, and scientific-notation literals are not yet supported.
+and multiline `if`/`else` are not yet supported.
 
 Evaluation is currently tree-walking. Bytecode compilation is not planned for
 v2; correctness, compatibility, and a small embeddable API take priority. A

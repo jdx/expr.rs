@@ -34,6 +34,10 @@ impl Value {
         i64::from_str_radix(digits, radix)
     }
 
+    pub(crate) fn parse_float(value: &str) -> std::result::Result<f64, std::num::ParseFloatError> {
+        value.replace('_', "").parse()
+    }
+
     pub fn as_bool(&self) -> Option<bool> {
         match self {
             Value::Bool(b) => Some(*b),
@@ -210,7 +214,9 @@ impl From<Pair<'_, Rule>> for Value {
             Rule::int => {
                 Value::Integer(Value::parse_integer(pair.as_str()).expect("literal validated"))
             }
-            Rule::decimal => Value::Float(pair.as_str().parse().unwrap()),
+            Rule::decimal => {
+                Value::Float(Value::parse_float(pair.as_str()).expect("literal validated"))
+            }
             Rule::string_multiline => pair.into_inner().as_str().into(),
             Rule::string => pair
                 .into_inner()
