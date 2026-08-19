@@ -1,6 +1,6 @@
 use serde_json;
 
-use crate::{bail, Environment, Value};
+use crate::{bail, Environment, Result, Value};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 
@@ -29,8 +29,8 @@ fn json_to_value(json: serde_json::Value) -> Value {
 }
 
 /// Convert an expr::Value to a serde_json::Value
-fn value_to_json(value: &Value) -> serde_json::Value {
-    match value {
+fn value_to_json(value: &Value) -> Result<serde_json::Value> {
+    Ok(match value {
         Value::Nil => serde_json::Value::Null,
         Value::Bool(b) => serde_json::Value::Bool(*b),
         Value::Integer(n) => serde_json::Value::Number((*n).into()),
@@ -49,15 +49,29 @@ fn value_to_json(value: &Value) -> serde_json::Value {
         Value::Month(value) | Value::Weekday(value) => {
             serde_json::Value::Number((*value).into())
         }
-        Value::Array(arr) => {
-            serde_json::Value::Array(arr.iter().map(value_to_json).collect())
-        }
+        Value::Array(arr) => serde_json::Value::Array(
+            arr.iter().map(value_to_json).collect::<Result<Vec<_>>>()?
+        ),
         Value::Map(m) => {
             serde_json::Value::Object(
-                m.iter().map(|(k, v)| (k.clone(), value_to_json(v))).collect()
+                m.iter()
+                    .map(|(k, v)| Ok((k.clone(), value_to_json(v)?)))
+                    .collect::<Result<_>>()?
             )
         }
-    }
+        Value::KeyedMap(m) => serde_json::Value::Object(
+            m.iter()
+                .map(|(key, value)| {
+                    let key = match key {
+                        Value::String(key) => key.clone(),
+                        Value::Integer(key) => key.to_string(),
+                        _ => bail!("toJSON() map keys must be strings or integers"),
+                    };
+                    Ok((key, value_to_json(value)?))
+                })
+                .collect::<Result<_>>()?
+        ),
+    })
 }
 
 pub fn add_json_functions(env: &mut Environment) {
@@ -83,7 +97,7 @@ pub fn add_json_functions(env: &mut Environment) {
         if c.args.len() != 1 {
             bail!("toJSON() takes exactly one argument");
         }
-        let json = value_to_json(&c.args[0]);
+        let json = value_to_json(&c.args[0])?;
         match serde_json::to_string(&json) {
             Ok(s) => Ok(Value::String(s)),
             Err(e) => bail!("toJSON() failed to serialize: {}", e),
@@ -96,10 +110,14 @@ pub fn add_json_functions(env: &mut Environment) {
         if c.args.len() != 1 {
             bail!("keys() takes exactly one argument");
         }
-        if let Value::Map(m) = &c.args[0] {
-            Ok(Value::Array(m.keys().map(|k| Value::String(k.clone())).collect()))
-        } else {
-            bail!("keys() takes a map as the argument");
+        match &c.args[0] {
+            Value::Map(m) => Ok(Value::Array(
+                m.keys().map(|k| Value::String(k.clone())).collect()
+            )),
+            Value::KeyedMap(m) => Ok(Value::Array(
+                m.iter().map(|(key, _)| key.clone()).collect()
+            )),
+            _ => bail!("keys() takes a map as the argument"),
         }
     });
 
@@ -109,10 +127,12 @@ pub fn add_json_functions(env: &mut Environment) {
         if c.args.len() != 1 {
             bail!("values() takes exactly one argument");
         }
-        if let Value::Map(m) = &c.args[0] {
-            Ok(Value::Array(m.values().cloned().collect()))
-        } else {
-            bail!("values() takes a map as the argument");
+        match &c.args[0] {
+            Value::Map(m) => Ok(Value::Array(m.values().cloned().collect())),
+            Value::KeyedMap(m) => Ok(Value::Array(
+                m.iter().map(|(_, value)| value.clone()).collect()
+            )),
+            _ => bail!("values() takes a map as the argument"),
         }
     });
 
@@ -127,6 +147,7 @@ pub fn add_json_functions(env: &mut Environment) {
             Value::String(s) => Ok(Value::Integer(s.len() as i64)),
             Value::Bytes(bytes) => Ok(Value::Integer(bytes.len() as i64)),
             Value::Map(m) => Ok(Value::Integer(m.len() as i64)),
+            Value::KeyedMap(m) => Ok(Value::Integer(m.len() as i64)),
             _ => bail!("len() takes an array, string, or map as the argument"),
         }
     });

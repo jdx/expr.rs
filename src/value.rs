@@ -124,6 +124,8 @@ pub enum Value {
     // Keep Bytes after Array so untagged serde treats JSON integer arrays as arrays.
     Bytes(Vec<u8>),
     Map(IndexMap<String, Value>),
+    /// A map whose keys are arbitrary expr values.
+    KeyedMap(Vec<(Value, Value)>),
 }
 
 impl Value {
@@ -201,6 +203,13 @@ impl Value {
     pub fn as_map(&self) -> Option<&IndexMap<String, Value>> {
         match self {
             Value::Map(m) => Some(m),
+            _ => None,
+        }
+    }
+
+    pub fn as_keyed_map(&self) -> Option<&[(Value, Value)]> {
+        match self {
+            Value::KeyedMap(m) => Some(m),
             _ => None,
         }
     }
@@ -325,6 +334,14 @@ impl Display for Value {
                     .join(", ")
             ),
             Value::Map(m) => write!(
+                f,
+                "{{{}}}",
+                m.iter()
+                    .map(|(k, v)| format!("{}: {}", k, v))
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ),
+            Value::KeyedMap(m) => write!(
                 f,
                 "{{{}}}",
                 m.iter()

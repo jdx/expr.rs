@@ -47,6 +47,7 @@ impl<'de> Deserializer<'de> for ValueDeserializer {
             Value::Month(value) | Value::Weekday(value) => visitor.visit_u32(value),
             Value::Array(a) => visitor.visit_seq(SeqDeserializer::new(a.into_iter())),
             Value::Map(m) => visitor.visit_map(MapDeserializer::new(m.into_iter())),
+            Value::KeyedMap(m) => visitor.visit_map(MapDeserializer::new(m.into_iter())),
             Value::Nil => visitor.visit_unit(),
         }
     }
@@ -329,14 +330,14 @@ impl serde::ser::SerializeTupleVariant for SerializeTupleVariant {
 
 #[doc(hidden)]
 pub struct SerializeMap {
-    map: IndexMap<String, Value>,
-    next_key: Option<String>,
+    map: Vec<(Value, Value)>,
+    next_key: Option<Value>,
 }
 
 impl SerializeMap {
     pub fn new() -> Self {
         Self {
-            map: IndexMap::new(),
+            map: Vec::new(),
             next_key: None,
         }
     }
@@ -349,25 +350,27 @@ impl serde::ser::SerializeMap for SerializeMap {
     fn serialize_key<T>(&mut self, key: &T) -> Result<(), Self::Error>
     where T: ?Sized + Serialize,
     {
-        match key.serialize(ValueSerializer {})? {
-            Value::String(s) => {
-                self.next_key = Some(s);
-                Ok(())
-            }
-            _ => Err(Error::SerializeError("key must be a string".to_string())),
-        }
+        self.next_key = Some(key.serialize(ValueSerializer {})?);
+        Ok(())
     }
 
     fn serialize_value<T>(&mut self, value: &T) -> Result<(), Self::Error>
     where T: ?Sized + Serialize,
     {
         let key = self.next_key.take().expect("serialize_value called before serialize_key");
-        self.map.insert(key, value.serialize(ValueSerializer {})?);
+        self.map.push((key, value.serialize(ValueSerializer {})?));
         Ok(())
     }
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
-        Ok(Value::Map(self.map))
+        if self.map.iter().all(|(key, _)| matches!(key, Value::String(_))) {
+            Ok(Value::Map(self.map.into_iter().map(|(key, value)| {
+                let Value::String(key) = key else { unreachable!("checked") };
+                (key, value)
+            }).collect()))
+        } else {
+            Ok(Value::KeyedMap(self.map))
+        }
     }
 }
 

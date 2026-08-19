@@ -104,6 +104,38 @@ fn expr_string(value: &Value) -> String {
             .collect::<Vec<_>>()
             .join(" ")
         ),
+        Value::KeyedMap(values) => format!(
+            "map[{}]",
+            {
+                let mut values = values.iter().collect::<Vec<_>>();
+                values.sort_by(|(left, _), (right, _)| compare_map_keys(left, right));
+                values
+            }
+                .into_iter()
+                .map(|(key, value)| format!("{}:{}", expr_string(key), expr_string(value)))
+                .collect::<Vec<_>>()
+                .join(" ")
+        ),
+    }
+}
+
+fn compare_map_keys(left: &Value, right: &Value) -> std::cmp::Ordering {
+    use std::cmp::Ordering;
+    match (left, right) {
+        (Value::Nil, Value::Nil) => Ordering::Equal,
+        (Value::Bool(left), Value::Bool(right)) => left.cmp(right),
+        (Value::Integer(left), Value::Integer(right)) => left.cmp(right),
+        (Value::Float(left), Value::Float(right)) => match (left.is_nan(), right.is_nan()) {
+            (true, false) => Ordering::Less,
+            (false, true) => Ordering::Greater,
+            _ => left.partial_cmp(right).unwrap_or(Ordering::Equal),
+        },
+        (Value::String(left), Value::String(right)) => left.cmp(right),
+        (Value::Duration(left), Value::Duration(right)) => left.cmp(right),
+        (Value::Month(left), Value::Month(right)) | (Value::Weekday(left), Value::Weekday(right)) => left.cmp(right),
+        (Value::DateTime(left), Value::DateTime(right)) => left.partial_cmp(right).unwrap_or(Ordering::Equal),
+        (Value::Timezone(left), Value::Timezone(right)) => left.name().cmp(right.name()),
+        _ => expr_string(left).cmp(&expr_string(right)),
     }
 }
 
