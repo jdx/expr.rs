@@ -15,7 +15,7 @@ use std::ops::{Add, Deref, Sub};
 pub struct DateTimeValue {
     value: chrono::DateTime<chrono::FixedOffset>,
     #[cfg_attr(feature = "serde", serde(skip))]
-    timezone: Option<chrono_tz::Tz>,
+    timezone: Option<TimezoneValue>,
     #[cfg_attr(feature = "serde", serde(skip))]
     zone_name: Option<String>,
 }
@@ -25,15 +25,22 @@ impl DateTimeValue {
         Self { value, timezone: None, zone_name: None }
     }
 
-    pub fn zoned(value: chrono::DateTime<chrono_tz::Tz>, timezone: chrono_tz::Tz) -> Self {
-        Self { value: value.fixed_offset(), timezone: Some(timezone), zone_name: None }
+    pub fn zoned(
+        value: chrono::DateTime<chrono_tz::Tz>,
+        timezone: impl Into<TimezoneValue>,
+    ) -> Self {
+        Self {
+            value: value.fixed_offset(),
+            timezone: Some(timezone.into()),
+            zone_name: None,
+        }
     }
 
-    pub(crate) fn with_timezone(&self, timezone: chrono_tz::Tz) -> Self {
-        Self::zoned(self.value.with_timezone(&timezone), timezone)
+    pub(crate) fn with_timezone(&self, timezone: TimezoneValue) -> Self {
+        Self::zoned(self.value.with_timezone(&timezone.timezone()), timezone)
     }
 
-    pub(crate) fn named_timezone(&self) -> Option<chrono_tz::Tz> {
+    pub(crate) fn timezone(&self) -> Option<TimezoneValue> {
         self.timezone
     }
 
@@ -44,12 +51,20 @@ impl DateTimeValue {
 
     pub fn checked_add_signed(mut self, duration: chrono::Duration) -> Option<Self> {
         self.value = self.value.checked_add_signed(duration)?;
+        self.refresh_timezone();
         Some(self)
     }
 
     pub fn checked_sub_signed(mut self, duration: chrono::Duration) -> Option<Self> {
         self.value = self.value.checked_sub_signed(duration)?;
+        self.refresh_timezone();
         Some(self)
+    }
+
+    fn refresh_timezone(&mut self) {
+        if let Some(timezone) = self.timezone {
+            self.value = self.value.with_timezone(&timezone.timezone()).fixed_offset();
+        }
     }
 
     pub(crate) fn zone_name(&self) -> String {
@@ -57,7 +72,10 @@ impl DateTimeValue {
             return zone_name.clone();
         }
         if let Some(timezone) = self.timezone {
-            self.value.with_timezone(&timezone).format("%Z").to_string()
+            self.value
+                .with_timezone(&timezone.timezone())
+                .format("%Z")
+                .to_string()
         } else if self.value.offset().local_minus_utc() == 0 {
             "UTC".to_string()
         } else {
@@ -97,6 +115,7 @@ impl Add<chrono::Duration> for DateTimeValue {
 
     fn add(mut self, duration: chrono::Duration) -> Self::Output {
         self.value += duration;
+        self.refresh_timezone();
         self
     }
 }
@@ -106,7 +125,82 @@ impl Sub<chrono::Duration> for DateTimeValue {
 
     fn sub(mut self, duration: chrono::Duration) -> Self::Output {
         self.value -= duration;
+        self.refresh_timezone();
         self
+    }
+}
+
+/// A timezone used by expr time values.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(transparent))]
+pub struct TimezoneValue {
+    timezone: chrono_tz::Tz,
+    #[cfg_attr(feature = "serde", serde(skip))]
+    local: bool,
+}
+
+impl TimezoneValue {
+    /// Creates a named IANA timezone.
+    pub fn named(timezone: chrono_tz::Tz) -> Self {
+        Self { timezone, local: false }
+    }
+
+    /// Resolves the process-local timezone.
+    pub fn local() -> Result<Self, String> {
+        let timezone = std::env::var("TZ")
+            .ok()
+            .and_then(|timezone| {
+                timezone
+                    .strip_prefix(':')
+                    .unwrap_or(&timezone)
+                    .parse::<chrono_tz::Tz>()
+                    .ok()
+            })
+            .map(Ok)
+            .unwrap_or_else(|| {
+                iana_time_zone::get_timezone()
+                    .map_err(|error| error.to_string())?
+                    .parse::<chrono_tz::Tz>()
+                    .map_err(|error| error.to_string())
+            })?;
+        Ok(Self { timezone, local: true })
+    }
+
+    #[cfg(test)]
+    pub(crate) fn local_with_timezone(timezone: chrono_tz::Tz) -> Self {
+        Self { timezone, local: true }
+    }
+
+    /// Returns the IANA timezone that supplies this location's offset rules.
+    pub fn timezone(self) -> chrono_tz::Tz {
+        self.timezone
+    }
+
+    /// Returns the Go-compatible location name.
+    pub fn name(self) -> &'static str {
+        if self.local {
+            "Local"
+        } else {
+            self.timezone.name()
+        }
+    }
+
+    /// Returns whether this is the process-local location.
+    pub fn is_local(self) -> bool {
+        self.local
+    }
+}
+
+impl From<chrono_tz::Tz> for TimezoneValue {
+    fn from(timezone: chrono_tz::Tz) -> Self {
+        Self::named(timezone)
+    }
+}
+
+impl Display for TimezoneValue {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.write_str(self.name())
     }
 }
 
@@ -131,7 +225,7 @@ pub enum Value {
     String(String),
     DateTime(DateTimeValue),
     Duration(i64),
-    Timezone(chrono_tz::Tz),
+    Timezone(TimezoneValue),
     Month(u32),
     Weekday(u32),
     Array(Vec<Value>),
