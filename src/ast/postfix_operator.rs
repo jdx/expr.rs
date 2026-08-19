@@ -123,7 +123,9 @@ impl Environment<'_> {
                     }
                     (key, Value::KeyedMap(map)) => map
                         .into_iter()
-                        .find(|(candidate, _)| crate::ast::operator::values_equal(key, candidate))
+                        .find(|(candidate, _)| {
+                            crate::ast::operator::map_keys_equal(key, candidate)
+                        })
                         .map(|(_, value)| value)
                         .unwrap_or(Value::Nil),
                     (_, _) if *optional => Value::Nil,

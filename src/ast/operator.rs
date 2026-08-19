@@ -1,5 +1,5 @@
 use crate::ast::node::Node;
-use crate::Value::{Array, Bool, DateTime, Duration, Float, Integer, KeyedMap, Map, Month, String, Weekday};
+use crate::Value::{Array, Bool, Bytes, DateTime, Duration, Float, Integer, KeyedMap, Map, Month, String, Weekday};
 use crate::{bail, Result, Rule};
 use crate::{ContextProvider, Environment, Value};
 use log::trace;
@@ -86,13 +86,24 @@ pub(crate) fn values_equal(left: &Value, right: &Value) -> bool {
             left.len() == right.len()
                 && left.iter().all(|(left_key, left_value)| {
                     right.iter().any(|(right_key, right_value)| {
-                        values_equal(left_key, right_key)
+                        map_keys_equal(left_key, right_key)
                             && values_equal(left_value, right_value)
                     })
                 })
         }
         _ => left == right,
     }
+}
+
+pub(crate) fn is_comparable_map_key(value: &Value) -> bool {
+    !matches!(
+        value,
+        Array(_) | Bytes(_) | Map(_) | KeyedMap(_)
+    )
+}
+
+pub(crate) fn map_keys_equal(left: &Value, right: &Value) -> bool {
+    std::mem::discriminant(left) == std::mem::discriminant(right) && left == right
 }
 
 impl Environment<'_> {
@@ -197,11 +208,17 @@ impl Environment<'_> {
                 | (Integer(_), Month(_) | Weekday(_)) => {
                     bail!("Invalid operands for operator {operator}")
                 }
+                (Map(_), KeyedMap(_)) | (KeyedMap(_), Map(_)) => {
+                    bail!("Invalid operands for operator {operator}")
+                }
                 _ => Bool(values_equal(&left, &right)),
             },
             Operator::NotEqual => match (&left, &right) {
                 (Month(_) | Weekday(_), Integer(_))
                 | (Integer(_), Month(_) | Weekday(_)) => {
+                    bail!("Invalid operands for operator {operator}")
+                }
+                (Map(_), KeyedMap(_)) | (KeyedMap(_), Map(_)) => {
                     bail!("Invalid operands for operator {operator}")
                 }
                 _ => Bool(!values_equal(&left, &right)),
@@ -251,7 +268,7 @@ impl Environment<'_> {
                 (String(left), Map(right)) => right.contains_key(&left).into(),
                 (left, KeyedMap(right)) => right
                     .iter()
-                    .any(|(key, _)| values_equal(&left, key))
+                    .any(|(key, _)| map_keys_equal(&left, key))
                     .into(),
                 (left, Array(right)) => right
                     .iter()
@@ -263,7 +280,7 @@ impl Environment<'_> {
                 (String(left), Map(right)) => (!right.contains_key(&left)).into(),
                 (left, KeyedMap(right)) => (!right
                     .iter()
-                    .any(|(key, _)| values_equal(&left, key)))
+                    .any(|(key, _)| map_keys_equal(&left, key)))
                     .into(),
                 (left, Array(right)) => (!right.iter().any(|right| values_equal(&left, right))).into(),
                 _ => bail!("Invalid operands for operator {operator}"),

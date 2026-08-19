@@ -59,18 +59,7 @@ fn value_to_json(value: &Value) -> Result<serde_json::Value> {
                     .collect::<Result<_>>()?
             )
         }
-        Value::KeyedMap(m) => serde_json::Value::Object(
-            m.iter()
-                .map(|(key, value)| {
-                    let key = match key {
-                        Value::String(key) => key.clone(),
-                        Value::Integer(key) => key.to_string(),
-                        _ => bail!("toJSON() map keys must be strings or integers"),
-                    };
-                    Ok((key, value_to_json(value)?))
-                })
-                .collect::<Result<_>>()?
-        ),
+        Value::KeyedMap(_) => bail!("toJSON() does not support arbitrary-key maps"),
     })
 }
 
