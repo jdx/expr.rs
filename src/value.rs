@@ -148,22 +148,15 @@ impl TimezoneValue {
 
     /// Resolves the process-local timezone.
     pub fn local() -> Result<Self, String> {
-        let timezone = std::env::var("TZ")
-            .ok()
-            .and_then(|timezone| {
-                timezone
-                    .strip_prefix(':')
-                    .unwrap_or(&timezone)
-                    .parse::<chrono_tz::Tz>()
-                    .ok()
-            })
-            .map(Ok)
-            .unwrap_or_else(|| {
+        let timezone = match std::env::var_os("TZ") {
+            Some(timezone) => timezone_from_env(&timezone),
+            None => {
                 iana_time_zone::get_timezone()
                     .map_err(|error| error.to_string())?
                     .parse::<chrono_tz::Tz>()
                     .map_err(|error| error.to_string())
-            })?;
+            }?,
+        };
         Ok(Self { timezone, local: true })
     }
 
@@ -192,6 +185,19 @@ impl TimezoneValue {
     }
 }
 
+fn timezone_from_env(value: &std::ffi::OsStr) -> chrono_tz::Tz {
+    value
+        .to_str()
+        .and_then(|timezone| {
+            timezone
+                .strip_prefix(':')
+                .unwrap_or(timezone)
+                .parse::<chrono_tz::Tz>()
+                .ok()
+        })
+        .unwrap_or(chrono_tz::UTC)
+}
+
 impl From<chrono_tz::Tz> for TimezoneValue {
     fn from(timezone: chrono_tz::Tz) -> Self {
         Self::named(timezone)
@@ -201,6 +207,28 @@ impl From<chrono_tz::Tz> for TimezoneValue {
 impl Display for TimezoneValue {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.write_str(self.name())
+    }
+}
+
+#[cfg(test)]
+mod timezone_tests {
+    use super::*;
+
+    #[test]
+    fn empty_and_invalid_tz_environment_values_use_utc() {
+        assert_eq!(timezone_from_env(std::ffi::OsStr::new("")), chrono_tz::UTC);
+        assert_eq!(
+            timezone_from_env(std::ffi::OsStr::new("not-a-timezone")),
+            chrono_tz::UTC
+        );
+    }
+
+    #[test]
+    fn tz_environment_value_accepts_go_colon_prefix() {
+        assert_eq!(
+            timezone_from_env(std::ffi::OsStr::new(":America/New_York")),
+            chrono_tz::America::New_York
+        );
     }
 }
 
