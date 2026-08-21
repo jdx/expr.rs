@@ -1,5 +1,9 @@
-use crate::{Environment, Error, Value, bail};
+use crate::{Environment, Value, bail};
+#[cfg(feature = "base64")]
+use crate::Error;
+#[cfg(feature = "base64")]
 use base64::Engine;
+#[cfg(feature = "base64")]
 use base64::engine::general_purpose::STANDARD;
 
 fn one_argument(name: &str, mut args: Vec<Value>) -> crate::Result<Value> {
@@ -19,10 +23,15 @@ pub fn add_misc_functions(env: &mut Environment) {
             Value::Float(_) => "float",
             Value::String(_) => "string",
             Value::Bytes(_) => "array",
+            #[cfg(feature = "temporal")]
             Value::DateTime(_) => "time.Time",
+            #[cfg(feature = "temporal")]
             Value::Duration(_) => "time.Duration",
+            #[cfg(feature = "temporal")]
             Value::Timezone(_) => "time.Location",
+            #[cfg(feature = "temporal")]
             Value::Month(_) => "time.Month",
+            #[cfg(feature = "temporal")]
             Value::Weekday(_) => "time.Weekday",
             Value::Array(_) => "array",
             Value::Map(_) => "map",
@@ -74,10 +83,14 @@ pub fn add_misc_functions(env: &mut Environment) {
         }
     });
 
+    #[cfg(not(feature = "base64"))]
+    super::add_disabled_functions(env, "base64", &["toBase64", "fromBase64"]);
+    #[cfg(feature = "base64")]
     env.add_function("toBase64", |call| match one_argument("toBase64", call.args)? {
         Value::String(value) => Ok(Value::from(STANDARD.encode(value))),
         _ => bail!("toBase64() takes a string as the argument"),
     });
+    #[cfg(feature = "base64")]
     env.add_function("fromBase64", |call| match one_argument("fromBase64", call.args)? {
         Value::String(value) => {
             let decoded = STANDARD

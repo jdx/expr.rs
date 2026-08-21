@@ -5,15 +5,11 @@ use crate::{bail, Result};
 use crate::{ContextProvider, Environment, Value};
 use log::trace;
 use pest::iterators::Pair;
-use std::str::FromStr;
 
-#[derive(Debug, Clone, strum::EnumString)]
+#[derive(Debug, Clone)]
 pub enum UnaryOperator {
-    #[strum(serialize = "!")]
     Not,
-    #[strum(serialize = "+")]
     Positive,
-    #[strum(serialize = "-")]
     Negative,
 }
 
@@ -21,9 +17,10 @@ impl From<Pair<'_, Rule>> for UnaryOperator {
     fn from(pair: Pair<Rule>) -> Self {
         trace!("[unary_operator] {pair:?}");
         match pair.as_str() {
-            "not" => UnaryOperator::Not,
-            op => UnaryOperator::from_str(op)
-                .unwrap_or_else(|_| unreachable!("Invalid operator {op}")),
+            "not" | "!" => UnaryOperator::Not,
+            "+" => UnaryOperator::Positive,
+            "-" => UnaryOperator::Negative,
+            op => unreachable!("Invalid operator {op}"),
         }
     }
 }

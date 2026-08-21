@@ -41,9 +41,13 @@ impl<'de> Deserializer<'de> for ValueDeserializer {
             Value::Bool(b) => visitor.visit_bool(b),
             Value::String(s) => visitor.visit_string(s),
             Value::Bytes(bytes) => visitor.visit_byte_buf(bytes),
+            #[cfg(feature = "temporal")]
             Value::DateTime(value) => visitor.visit_string(value.to_rfc3339()),
+            #[cfg(feature = "temporal")]
             Value::Duration(value) => visitor.visit_i64(value),
+            #[cfg(feature = "temporal")]
             Value::Timezone(value) => visitor.visit_string(value.to_string()),
+            #[cfg(feature = "temporal")]
             Value::Month(value) | Value::Weekday(value) => visitor.visit_u32(value),
             Value::Array(a) => visitor.visit_seq(SeqDeserializer::new(a.into_iter())),
             Value::Map(m) => visitor.visit_map(MapDeserializer::new(m.into_iter())),

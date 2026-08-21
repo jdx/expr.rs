@@ -43,7 +43,9 @@ pub use crate::parser::compile;
 #[allow(deprecated)]
 pub use crate::parser::Parser;
 pub use crate::ast::program::Program;
-pub use crate::value::{DateTimeValue, TimezoneValue, Value};
+#[cfg(feature = "temporal")]
+pub use crate::value::{DateTimeValue, TimezoneValue};
+pub use crate::value::Value;
 #[cfg(feature = "serde")]
 pub use crate::serde::{from_value, to_value};
 

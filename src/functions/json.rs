@@ -1,10 +1,16 @@
+#[cfg(feature = "json")]
 use serde_json;
 
-use crate::{bail, Environment, Result, Value};
+use crate::{bail, Environment, Value};
+#[cfg(feature = "json")]
+use crate::Result;
+#[cfg(feature = "json")]
 use base64::Engine;
+#[cfg(feature = "json")]
 use base64::engine::general_purpose::STANDARD;
 
 /// Convert a serde_json::Value to an expr::Value
+#[cfg(feature = "json")]
 fn json_to_value(json: serde_json::Value) -> Value {
     match json {
         serde_json::Value::Null => Value::Nil,
@@ -29,6 +35,7 @@ fn json_to_value(json: serde_json::Value) -> Value {
 }
 
 /// Convert an expr::Value to a serde_json::Value
+#[cfg(feature = "json")]
 fn value_to_json(value: &Value) -> Result<serde_json::Value> {
     Ok(match value {
         Value::Nil => serde_json::Value::Null,
@@ -41,11 +48,15 @@ fn value_to_json(value: &Value) -> Result<serde_json::Value> {
         }
         Value::String(s) => serde_json::Value::String(s.clone()),
         Value::Bytes(bytes) => serde_json::Value::String(STANDARD.encode(bytes)),
+        #[cfg(feature = "temporal")]
         Value::DateTime(value) => serde_json::Value::String(
             crate::functions::temporal::date_to_rfc3339(value),
         ),
+        #[cfg(feature = "temporal")]
         Value::Duration(value) => serde_json::Value::Number((*value).into()),
+        #[cfg(feature = "temporal")]
         Value::Timezone(_) => serde_json::Value::Object(Default::default()),
+        #[cfg(feature = "temporal")]
         Value::Month(value) | Value::Weekday(value) => {
             serde_json::Value::Number((*value).into())
         }
@@ -64,8 +75,14 @@ fn value_to_json(value: &Value) -> Result<serde_json::Value> {
 }
 
 pub fn add_json_functions(env: &mut Environment) {
+    // `keys`, `values` and `len` are in this module too and are not JSON: they read a map or
+    // an array and need no crate to do it, so only the codec follows the feature.
+    #[cfg(not(feature = "json"))]
+    super::add_disabled_functions(env, "json", &["fromJSON", "toJSON"]);
+
     // fromJSON(string) -> Value
     // Parses a JSON string and returns the corresponding Value
+    #[cfg(feature = "json")]
     env.add_function("fromJSON", |c| {
         if c.args.len() != 1 {
             bail!("fromJSON() takes exactly one argument");
@@ -82,6 +99,7 @@ pub fn add_json_functions(env: &mut Environment) {
 
     // toJSON(value) -> String
     // Serializes a value to a JSON string
+    #[cfg(feature = "json")]
     env.add_function("toJSON", |c| {
         if c.args.len() != 1 {
             bail!("toJSON() takes exactly one argument");

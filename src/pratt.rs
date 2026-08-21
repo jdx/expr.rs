@@ -1,8 +1,8 @@
 use crate::Rule;
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use pest::pratt_parser::PrattParser;
 
-pub(crate) static PRATT_PARSER: Lazy<PrattParser<Rule>> = Lazy::new(|| {
+pub(crate) static PRATT_PARSER: LazyLock<PrattParser<Rule>> = LazyLock::new(|| {
     use pest::pratt_parser::{Assoc::*, Op};
     use Rule::*;
 

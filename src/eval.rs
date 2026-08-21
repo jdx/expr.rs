@@ -2,12 +2,12 @@ use crate::ast::node::Node;
 use crate::ast::program::Program;
 use crate::context::ContextScope;
 use crate::functions::{
-    array, bitwise, collection, convert, json, misc, number, string, temporal, ExprCall, Function,
+    array, bitwise, collection, convert, json, misc, number, string, ExprCall, Function,
 };
 use crate::parser::compile;
 use crate::{bail, ContextProvider, Result, Value};
 use indexmap::IndexMap;
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 
@@ -73,7 +73,14 @@ impl<'a> Environment<'a> {
             functions: IndexMap::new(),
         };
         string::add_string_functions(&mut p);
-        temporal::add_temporal_functions(&mut p);
+        #[cfg(feature = "temporal")]
+        crate::functions::temporal::add_temporal_functions(&mut p);
+        #[cfg(not(feature = "temporal"))]
+        crate::functions::add_disabled_functions(
+            &mut p,
+            "temporal",
+            &["now", "date", "duration", "timezone"],
+        );
         array::add_array_functions(&mut p);
         bitwise::add_bitwise_functions(&mut p);
         collection::add_collection_functions(&mut p);
@@ -187,12 +194,19 @@ impl<'a> Environment<'a> {
                     .collect::<Result<_>>()?;
                 self.eval_func(ctx, ident, args, predicate.as_deref())?
             }
+            #[cfg(feature = "regex")]
             Node::Operation {
                 left,
                 operator,
                 right,
                 compiled_regex,
             } => self.eval_operator(ctx, operator, left, right, compiled_regex.as_ref())?,
+            #[cfg(not(feature = "regex"))]
+            Node::Operation {
+                left,
+                operator,
+                right,
+            } => self.eval_operator(ctx, operator, left, right)?,
             Node::Unary { operator, node } => self.eval_unary_operator(ctx, operator, node)?,
             Node::Postfix { operator, node } => self.eval_postfix_operator(ctx, operator, node)?,
             Node::Array(a) => Value::Array(
@@ -220,4 +234,4 @@ impl<'a> Environment<'a> {
     }
 }
 
-pub(crate) static DEFAULT_ENVIRONMENT: Lazy<Environment> = Lazy::new(Environment::new);
+pub(crate) static DEFAULT_ENVIRONMENT: LazyLock<Environment> = LazyLock::new(Environment::new);

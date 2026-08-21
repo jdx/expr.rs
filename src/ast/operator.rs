@@ -1,53 +1,102 @@
 use crate::ast::node::Node;
-use crate::Value::{Array, Bool, Bytes, DateTime, Duration, Float, Integer, KeyedMap, Map, Month, String, Weekday};
+use crate::Value::{Array, Bool, Bytes, Float, Integer, KeyedMap, Map, String};
+#[cfg(feature = "temporal")]
+use crate::Value::{DateTime, Duration, Month, Weekday};
 use crate::{bail, Result, Rule};
 use crate::{ContextProvider, Environment, Value};
 use log::trace;
 use pest::iterators::Pair;
-use std::str::FromStr;
+use std::fmt;
 
-#[derive(Debug, Clone, strum::EnumString, strum::Display)]
+#[derive(Debug, Clone)]
 pub enum Operator {
-    #[strum(serialize = "+")]
     Add,
-    #[strum(serialize = "-")]
     Subtract,
-    #[strum(serialize = "*")]
     Multiply,
-    #[strum(serialize = "/")]
     Divide,
-    #[strum(serialize = "%")]
     Modulo,
-    #[strum(serialize = "^")]
     Pow,
-    #[strum(serialize = "==")]
     Equal,
-    #[strum(serialize = "!=")]
     NotEqual,
-    #[strum(serialize = ">")]
     GreaterThan,
-    #[strum(serialize = ">=")]
     GreaterThanOrEqual,
-    #[strum(serialize = "<")]
     LessThan,
-    #[strum(serialize = "<=")]
     LessThanOrEqual,
-    #[strum(serialize = "&&", serialize = "and")]
     And,
-    #[strum(serialize = "||", serialize = "or")]
     Or,
-    #[strum(serialize = "in")]
     In,
-    #[strum(serialize = "not in")]
     NotIn,
-    #[strum(serialize = "contains")]
     Contains,
-    #[strum(serialize = "startsWith")]
     StartsWith,
-    #[strum(serialize = "endsWith")]
     EndsWith,
-    #[strum(serialize = "matches")]
     Matches,
+}
+
+impl Operator {
+    /// How the operator is written in an error message.
+    ///
+    /// The word spelling for `and`/`or`, which is what an expression that reached an error
+    /// most likely used: `&&` and `||` are the same operator by another name.
+    fn as_str(&self) -> &'static str {
+        match self {
+            Operator::Add => "+",
+            Operator::Subtract => "-",
+            Operator::Multiply => "*",
+            Operator::Divide => "/",
+            Operator::Modulo => "%",
+            Operator::Pow => "^",
+            Operator::Equal => "==",
+            Operator::NotEqual => "!=",
+            Operator::GreaterThan => ">",
+            Operator::GreaterThanOrEqual => ">=",
+            Operator::LessThan => "<",
+            Operator::LessThanOrEqual => "<=",
+            Operator::And => "and",
+            Operator::Or => "or",
+            Operator::In => "in",
+            Operator::NotIn => "not in",
+            Operator::Contains => "contains",
+            Operator::StartsWith => "startsWith",
+            Operator::EndsWith => "endsWith",
+            Operator::Matches => "matches",
+        }
+    }
+
+    /// The operator a token spells, or `None` if it spells none.
+    ///
+    /// Both spellings of the logical operators are accepted, as the grammar allows both. `**`
+    /// is handled by the caller, which is where the grammar's alias for `^` already lived.
+    fn from_token(token: &str) -> Option<Self> {
+        Some(match token {
+            "+" => Operator::Add,
+            "-" => Operator::Subtract,
+            "*" => Operator::Multiply,
+            "/" => Operator::Divide,
+            "%" => Operator::Modulo,
+            "^" => Operator::Pow,
+            "==" => Operator::Equal,
+            "!=" => Operator::NotEqual,
+            ">" => Operator::GreaterThan,
+            ">=" => Operator::GreaterThanOrEqual,
+            "<" => Operator::LessThan,
+            "<=" => Operator::LessThanOrEqual,
+            "&&" | "and" => Operator::And,
+            "||" | "or" => Operator::Or,
+            "in" => Operator::In,
+            "not in" => Operator::NotIn,
+            "contains" => Operator::Contains,
+            "startsWith" => Operator::StartsWith,
+            "endsWith" => Operator::EndsWith,
+            "matches" => Operator::Matches,
+            _ => return None,
+        })
+    }
+}
+
+impl fmt::Display for Operator {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
 }
 
 impl From<Pair<'_, Rule>> for Operator {
@@ -58,7 +107,8 @@ impl From<Pair<'_, Rule>> for Operator {
         }
         match pair.as_str() {
             "**" => Operator::Pow,
-            op => Operator::from_str(op).unwrap_or_else(|_| unreachable!("Invalid operator {op}")),
+            op => Operator::from_token(op)
+                .unwrap_or_else(|| unreachable!("Invalid operator {op}")),
         }
     }
 }
@@ -113,7 +163,7 @@ impl Environment<'_> {
         operator: &Operator,
         left: &Node,
         right: &Node,
-        compiled_regex: Option<&regex::Regex>,
+        #[cfg(feature = "regex")] compiled_regex: Option<&regex::Regex>,
     ) -> Result<Value> {
         let left = self.eval_expr(ctx, left)?;
         match &operator {
@@ -147,14 +197,17 @@ impl Environment<'_> {
                 (Integer(left), Float(right)) => Float(left as f64 + right),
                 (Float(left), Integer(right)) => Float(left + right as f64),
                 (String(left), String(right)) => format!("{left}{right}").into(),
+                #[cfg(feature = "temporal")]
                 (DateTime(left), Duration(right)) => {
                     DateTime(left.checked_add_signed(chrono::Duration::nanoseconds(right))
                         .ok_or_else(|| crate::Error::ExprError("date out of range".into()))?)
                 }
+                #[cfg(feature = "temporal")]
                 (Duration(left), DateTime(right)) => {
                     DateTime(right.checked_add_signed(chrono::Duration::nanoseconds(left))
                         .ok_or_else(|| crate::Error::ExprError("date out of range".into()))?)
                 }
+                #[cfg(feature = "temporal")]
                 (Duration(left), Duration(right)) => Duration(left.wrapping_add(right)),
                 _ => bail!("Invalid operands for operator +"),
             },
@@ -163,15 +216,18 @@ impl Environment<'_> {
                 (Float(left), Float(right)) => Float(left - right),
                 (Integer(left), Float(right)) => Float(left as f64 - right),
                 (Float(left), Integer(right)) => Float(left - right as f64),
+                #[cfg(feature = "temporal")]
                 (DateTime(left), DateTime(right)) => Duration(
                     (left - right)
                         .num_nanoseconds()
                         .ok_or_else(|| crate::Error::ExprError("duration out of range".into()))?,
                 ),
+                #[cfg(feature = "temporal")]
                 (DateTime(left), Duration(right)) => {
                     DateTime(left.checked_sub_signed(chrono::Duration::nanoseconds(right))
                         .ok_or_else(|| crate::Error::ExprError("date out of range".into()))?)
                 }
+                #[cfg(feature = "temporal")]
                 (Duration(left), Duration(right)) => Duration(left.wrapping_sub(right)),
                 _ => bail!("Invalid operands for operator -"),
             },
@@ -180,7 +236,9 @@ impl Environment<'_> {
                 (Float(left), Float(right)) => Float(left * right),
                 (Integer(left), Float(right)) => Float(left as f64 * right),
                 (Float(left), Integer(right)) => Float(left * right as f64),
+                #[cfg(feature = "temporal")]
                 (Duration(left), Integer(right)) => Duration(left.wrapping_mul(right)),
+                #[cfg(feature = "temporal")]
                 (Integer(left), Duration(right)) => Duration(left.wrapping_mul(right)),
                 _ => bail!("Invalid operands for operator *"),
             },
@@ -204,6 +262,7 @@ impl Environment<'_> {
                 _ => bail!("Invalid operands for operator {operator}"),
             },
             Operator::Equal => match (&left, &right) {
+                #[cfg(feature = "temporal")]
                 (Month(_) | Weekday(_), Integer(_))
                 | (Integer(_), Month(_) | Weekday(_)) => {
                     bail!("Invalid operands for operator {operator}")
@@ -214,6 +273,7 @@ impl Environment<'_> {
                 _ => Bool(values_equal(&left, &right)),
             },
             Operator::NotEqual => match (&left, &right) {
+                #[cfg(feature = "temporal")]
                 (Month(_) | Weekday(_), Integer(_))
                 | (Integer(_), Month(_) | Weekday(_)) => {
                     bail!("Invalid operands for operator {operator}")
@@ -229,7 +289,9 @@ impl Environment<'_> {
                 (Integer(left), Float(right)) => (left as f64 > right).into(),
                 (Float(left), Integer(right)) => (left > right as f64).into(),
                 (String(left), String(right)) => (left > right).into(),
+                #[cfg(feature = "temporal")]
                 (DateTime(left), DateTime(right)) => (left > right).into(),
+                #[cfg(feature = "temporal")]
                 (Duration(left), Duration(right)) => (left > right).into(),
                 _ => bail!("Invalid operands for operator {operator}"),
             },
@@ -239,7 +301,9 @@ impl Environment<'_> {
                 (Integer(left), Float(right)) => (left as f64 >= right).into(),
                 (Float(left), Integer(right)) => (left >= right as f64).into(),
                 (String(left), String(right)) => (left >= right).into(),
+                #[cfg(feature = "temporal")]
                 (DateTime(left), DateTime(right)) => (left >= right).into(),
+                #[cfg(feature = "temporal")]
                 (Duration(left), Duration(right)) => (left >= right).into(),
                 _ => bail!("Invalid operands for operator {operator}"),
             },
@@ -249,7 +313,9 @@ impl Environment<'_> {
                 (Integer(left), Float(right)) => ((left as f64) < right).into(),
                 (Float(left), Integer(right)) => (left < right as f64).into(),
                 (String(left), String(right)) => (left < right).into(),
+                #[cfg(feature = "temporal")]
                 (DateTime(left), DateTime(right)) => (left < right).into(),
+                #[cfg(feature = "temporal")]
                 (Duration(left), Duration(right)) => (left < right).into(),
                 _ => bail!("Invalid operands for operator {operator}"),
             },
@@ -259,7 +325,9 @@ impl Environment<'_> {
                 (Integer(left), Float(right)) => (left as f64 <= right).into(),
                 (Float(left), Integer(right)) => (left <= right as f64).into(),
                 (String(left), String(right)) => (left <= right).into(),
+                #[cfg(feature = "temporal")]
                 (DateTime(left), DateTime(right)) => (left <= right).into(),
+                #[cfg(feature = "temporal")]
                 (Duration(left), Duration(right)) => (left <= right).into(),
                 _ => bail!("Invalid operands for operator {operator}"),
             },
@@ -302,6 +370,7 @@ impl Environment<'_> {
                 (String(left), String(right)) => Bool(left.ends_with(&right)),
                 _ => bail!("Invalid operands for operator endsWith"),
             },
+            #[cfg(feature = "regex")]
             Operator::Matches => match (left, right) {
                 (String(left), String(right)) => {
                     if let Some(regex) = compiled_regex {
@@ -312,6 +381,10 @@ impl Environment<'_> {
                 }
                 _ => bail!("Invalid operands for operator matches"),
             },
+            // Reachable only because the grammar has no features: the operator parses, and
+            // says what is missing rather than pretending the pattern did not match.
+            #[cfg(not(feature = "regex"))]
+            Operator::Matches => bail!("the `matches` operator requires the `regex` feature"),
         };
 
         Ok(result)
