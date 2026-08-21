@@ -6,6 +6,7 @@ pub mod json;
 pub mod misc;
 pub mod number;
 pub mod string;
+#[cfg(feature = "temporal")]
 pub mod temporal;
 
 use crate::Result;

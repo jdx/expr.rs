@@ -6,9 +6,11 @@ use pest::iterators::{Pair, Pairs};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::{Display, Formatter};
+#[cfg(feature = "temporal")]
 use std::ops::{Add, Deref, Sub};
 
 /// A time value together with the named timezone, when one is known.
+#[cfg(feature = "temporal")]
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
@@ -20,6 +22,7 @@ pub struct DateTimeValue {
     zone_name: Option<String>,
 }
 
+#[cfg(feature = "temporal")]
 impl DateTimeValue {
     pub fn fixed(value: chrono::DateTime<chrono::FixedOffset>) -> Self {
         Self { value, timezone: None, zone_name: None }
@@ -84,12 +87,14 @@ impl DateTimeValue {
     }
 }
 
+#[cfg(feature = "temporal")]
 impl From<chrono::DateTime<chrono::FixedOffset>> for DateTimeValue {
     fn from(value: chrono::DateTime<chrono::FixedOffset>) -> Self {
         Self::fixed(value)
     }
 }
 
+#[cfg(feature = "temporal")]
 impl Deref for DateTimeValue {
     type Target = chrono::DateTime<chrono::FixedOffset>;
 
@@ -98,18 +103,21 @@ impl Deref for DateTimeValue {
     }
 }
 
+#[cfg(feature = "temporal")]
 impl PartialEq for DateTimeValue {
     fn eq(&self, other: &Self) -> bool {
         self.value == other.value
     }
 }
 
+#[cfg(feature = "temporal")]
 impl PartialOrd for DateTimeValue {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.value.partial_cmp(&other.value)
     }
 }
 
+#[cfg(feature = "temporal")]
 impl Add<chrono::Duration> for DateTimeValue {
     type Output = Self;
 
@@ -120,6 +128,7 @@ impl Add<chrono::Duration> for DateTimeValue {
     }
 }
 
+#[cfg(feature = "temporal")]
 impl Sub<chrono::Duration> for DateTimeValue {
     type Output = Self;
 
@@ -133,6 +142,7 @@ impl Sub<chrono::Duration> for DateTimeValue {
 /// A timezone used by expr time values.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg(feature = "temporal")]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct TimezoneValue {
     timezone: chrono_tz::Tz,
@@ -140,6 +150,7 @@ pub struct TimezoneValue {
     local: bool,
 }
 
+#[cfg(feature = "temporal")]
 impl TimezoneValue {
     /// Creates a named IANA timezone.
     pub fn named(timezone: chrono_tz::Tz) -> Self {
@@ -185,6 +196,7 @@ impl TimezoneValue {
     }
 }
 
+#[cfg(feature = "temporal")]
 fn timezone_from_env(value: &std::ffi::OsStr) -> chrono_tz::Tz {
     value
         .to_str()
@@ -198,12 +210,14 @@ fn timezone_from_env(value: &std::ffi::OsStr) -> chrono_tz::Tz {
         .unwrap_or(chrono_tz::UTC)
 }
 
+#[cfg(feature = "temporal")]
 impl From<chrono_tz::Tz> for TimezoneValue {
     fn from(timezone: chrono_tz::Tz) -> Self {
         Self::named(timezone)
     }
 }
 
+#[cfg(feature = "temporal")]
 impl Display for TimezoneValue {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.write_str(self.name())
@@ -232,6 +246,7 @@ mod timezone_tests {
     }
 }
 
+#[cfg(feature = "temporal")]
 impl Sub for DateTimeValue {
     type Output = chrono::Duration;
 
@@ -251,10 +266,15 @@ pub enum Value {
     #[default]
     Nil,
     String(String),
+    #[cfg(feature = "temporal")]
     DateTime(DateTimeValue),
+    #[cfg(feature = "temporal")]
     Duration(i64),
+    #[cfg(feature = "temporal")]
     Timezone(TimezoneValue),
+    #[cfg(feature = "temporal")]
     Month(u32),
+    #[cfg(feature = "temporal")]
     Weekday(u32),
     Array(Vec<Value>),
     // Keep Bytes after Array so untagged serde treats JSON integer arrays as arrays.
@@ -315,6 +335,7 @@ impl Value {
         }
     }
 
+    #[cfg(feature = "temporal")]
     pub fn as_datetime(&self) -> Option<&chrono::DateTime<chrono::FixedOffset>> {
         match self {
             Value::DateTime(value) => Some(&value.value),
@@ -322,6 +343,7 @@ impl Value {
         }
     }
 
+    #[cfg(feature = "temporal")]
     pub fn as_duration(&self) -> Option<i64> {
         match self {
             Value::Duration(value) => Some(*value),
@@ -457,9 +479,13 @@ impl Display for Value {
                     .collect::<Vec<String>>()
                     .join(" ")
             ),
+            #[cfg(feature = "temporal")]
             Value::DateTime(value) => write!(f, "{}", value.to_rfc3339()),
+            #[cfg(feature = "temporal")]
             Value::Duration(value) => write!(f, "{value}ns"),
+            #[cfg(feature = "temporal")]
             Value::Timezone(value) => write!(f, "{value}"),
+            #[cfg(feature = "temporal")]
             Value::Month(value) | Value::Weekday(value) => write!(f, "{value}"),
             Value::Array(a) => write!(
                 f,

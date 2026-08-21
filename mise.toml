@@ -9,9 +9,25 @@ watchexec = "latest"
 cargo.binstall_native = true
 
 [tasks.lint]
+depends = ["lint:features"]
 run = [
   "cargo clippy --all-targets --all-features -- -D warnings",
   "pestfmt src/expr.pest",
+]
+
+# The features are subtractive, so `--all-features` is the one combination that proves nothing
+# about them: it is what the crate looked like before they existed. Each one is checked on its
+# own, and the empty set — the evaluator with no builtins that need a crate — first.
+[tasks."lint:features"]
+run = [
+  "cargo clippy --lib --no-default-features -- -D warnings",
+  "cargo clippy --lib --no-default-features -F base64 -- -D warnings",
+  "cargo clippy --lib --no-default-features -F json -- -D warnings",
+  "cargo clippy --lib --no-default-features -F regex -- -D warnings",
+  "cargo clippy --lib --no-default-features -F temporal -- -D warnings",
+  "cargo clippy --lib --no-default-features -F serde -- -D warnings",
+  "cargo clippy --lib --no-default-features -F serde,temporal -- -D warnings",
+  "cargo clippy --lib --no-default-features -F json,temporal -- -D warnings",
 ]
 
 [tasks.test]

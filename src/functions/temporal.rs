@@ -1,7 +1,7 @@
 use crate::{bail, value::{DateTimeValue, TimezoneValue}, Environment, Error, Value};
 use chrono::{DateTime, Datelike, Duration, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, Offset, TimeZone, Timelike, Utc};
 use chrono_tz::{OffsetComponents, Tz};
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use regex::Regex;
 
 const NANOS_PER_MICRO: i64 = 1_000;
@@ -10,12 +10,12 @@ const NANOS_PER_SECOND: i64 = 1_000_000_000;
 const NANOS_PER_MINUTE: i64 = 60 * NANOS_PER_SECOND;
 const NANOS_PER_HOUR: i64 = 60 * NANOS_PER_MINUTE;
 
-static COMPACT_OFFSET: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"([+-])(\d{2})(\d{2})(\d{2})").expect("valid offset regex"));
-static SECONDS_OFFSET: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"([+-])(\d{2}):(\d{2}):(\d{2})").expect("valid offset regex"));
-static TRAILING_ZONE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"([A-Za-z]{3,5})\s*$").expect("valid zone-name regex"));
+static COMPACT_OFFSET: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"([+-])(\d{2})(\d{2})(\d{2})").expect("valid offset regex"));
+static SECONDS_OFFSET: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"([+-])(\d{2}):(\d{2}):(\d{2})").expect("valid offset regex"));
+static TRAILING_ZONE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"([A-Za-z]{3,5})\s*$").expect("valid zone-name regex"));
 
 pub fn add_temporal_functions(env: &mut Environment) {
     env.add_function("now", |call| {
@@ -676,6 +676,8 @@ fn round_datetime(value: DateTimeValue, unit: i64, round: bool) -> crate::Result
         .ok_or_else(|| Error::ExprError("date out of range".to_string()))
 }
 
+// Read by `toJSON`, which is the only caller outside this module.
+#[cfg(feature = "json")]
 pub(crate) fn date_to_rfc3339(value: &DateTimeValue) -> String {
     format_go_layout(value, "2006-01-02T15:04:05.999999999Z07:00")
 }

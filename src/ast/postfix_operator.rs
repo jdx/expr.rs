@@ -6,7 +6,7 @@ use log::trace;
 use pest::iterators::Pair;
 use std::iter::once;
 
-#[derive(Debug, Clone, strum::Display)]
+#[derive(Debug, Clone)]
 pub enum PostfixOperator {
     Index { idx: Box<Node>, optional: bool },
     Range {
@@ -183,6 +183,14 @@ impl Environment<'_> {
                     .iter()
                     .map(|arg| self.eval_expr(ctx, arg))
                     .collect::<Result<Vec<_>>>()?;
+                // Every method the language has is a method on a temporal value, so without
+                // that feature there is no method to dispatch to.
+                #[cfg(not(feature = "temporal"))]
+                {
+                    let _ = args;
+                    bail!("unknown method {ident}: methods require the `temporal` feature")
+                }
+                #[cfg(feature = "temporal")]
                 crate::functions::temporal::eval_method(value, ident, args)?
             }
         };

@@ -42,6 +42,33 @@ fn main() {
 }
 ```
 
+### Cargo features
+
+Everything is on by default, so nothing changes for a dependent that says nothing. What the
+features are for is the other direction: an embedder that knows which builtins its expressions
+use can leave out the crates behind the rest. A CLI validating flag values with
+`int(value) > 0` does not need a timezone database.
+
+| Feature    | Default | What it enables                                                         | Crates it costs |
+| ---------- | :-----: | ----------------------------------------------------------------------- | --------------: |
+| `temporal` |   yes   | `now`, `date`, `duration`, `timezone`, every `.Year()`-style method, and the datetime/duration/timezone/month/weekday values | 7 |
+| `json`     |   yes   | `fromJSON`, `toJSON` (implies `base64`, which is how `toJSON` writes bytes) | 4 |
+| `regex`    |   yes   | the `matches` operator                                                  | 4 |
+| `base64`   |   yes   | `toBase64`, `fromBase64`                                                | 1 |
+| `serde`    |   no    | `to_value` / `from_value`, and `Serialize`/`Deserialize` for `Value`    | — |
+
+```toml
+# The evaluator, the operators, and every builtin that needs no crate to implement.
+expr-lang = { version = "2", default-features = false }
+```
+
+That is 14 crates instead of 30. `keys`, `values`, `len`, the string and array builtins, the
+arithmetic and comparison operators, and `?:` / `??` / pipes are all in the base: they need
+nothing but the parser.
+
+An expression that reaches a builtin whose feature is off gets an error naming the feature,
+rather than a wrong answer — the grammar has no features, so `matches` still parses.
+
 ### Serde integration
 
 #### Converting expr values to/from rust types

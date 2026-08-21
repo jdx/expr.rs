@@ -23,6 +23,7 @@ pub enum Node {
         operator: Operator,
         left: Box<Node>,
         right: Box<Node>,
+        #[cfg(feature = "regex")]
         compiled_regex: Option<regex::Regex>,
     },
     Postfix {
@@ -101,6 +102,7 @@ impl From<Pairs<'_, Rule>> for Node {
                     return Node::Range(Box::new(left), Box::new(right));
                 }
                 let operator = operator.into();
+                #[cfg(feature = "regex")]
                 let compiled_regex = match (&operator, &right) {
                     (Operator::Matches, Node::Value(Value::String(pattern))) => {
                         regex::Regex::new(pattern).ok()
@@ -111,6 +113,7 @@ impl From<Pairs<'_, Rule>> for Node {
                     operator,
                     left: Box::new(left),
                     right: Box::new(right),
+                    #[cfg(feature = "regex")]
                     compiled_regex,
                 }
             })

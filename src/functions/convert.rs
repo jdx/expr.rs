@@ -83,10 +83,15 @@ fn expr_string(value: &Value) -> String {
             "[{}]",
             values.iter().map(u8::to_string).collect::<Vec<_>>().join(" ")
         ),
+        #[cfg(feature = "temporal")]
         Value::DateTime(value) => crate::functions::temporal::format_datetime(value),
+        #[cfg(feature = "temporal")]
         Value::Duration(value) => crate::functions::temporal::format_duration(*value),
+        #[cfg(feature = "temporal")]
         Value::Timezone(value) => value.to_string(),
+        #[cfg(feature = "temporal")]
         Value::Month(value) => crate::functions::temporal::month_name(*value).to_string(),
+        #[cfg(feature = "temporal")]
         Value::Weekday(value) => crate::functions::temporal::weekday_name(*value).to_string(),
         Value::Array(values) => format!(
             "[{}]",
@@ -131,9 +136,13 @@ fn compare_map_keys(left: &Value, right: &Value) -> std::cmp::Ordering {
             _ => left.partial_cmp(right).unwrap_or(Ordering::Equal),
         },
         (Value::String(left), Value::String(right)) => left.cmp(right),
+        #[cfg(feature = "temporal")]
         (Value::Duration(left), Value::Duration(right)) => left.cmp(right),
+        #[cfg(feature = "temporal")]
         (Value::Month(left), Value::Month(right)) | (Value::Weekday(left), Value::Weekday(right)) => left.cmp(right),
+        #[cfg(feature = "temporal")]
         (Value::DateTime(left), Value::DateTime(right)) => left.partial_cmp(right).unwrap_or(Ordering::Equal),
+        #[cfg(feature = "temporal")]
         (Value::Timezone(left), Value::Timezone(right)) => left.name().cmp(right.name()),
         _ => expr_string(left).cmp(&expr_string(right)),
     }
