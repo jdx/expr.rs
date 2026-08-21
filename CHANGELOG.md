@@ -1,5 +1,11 @@
 # Changelog
 
+
+### Features
+
+- Make the dependency tree optional ([#110](https://github.com/jdx/expr.rs/pull/110))
+
+
 ## [2.0.0] - 2026-08-19
 
 ### Bug Fixes
