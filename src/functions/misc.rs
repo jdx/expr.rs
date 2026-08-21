@@ -83,6 +83,8 @@ pub fn add_misc_functions(env: &mut Environment) {
         }
     });
 
+    #[cfg(not(feature = "base64"))]
+    super::add_disabled_functions(env, "base64", &["toBase64", "fromBase64"]);
     #[cfg(feature = "base64")]
     env.add_function("toBase64", |call| match one_argument("toBase64", call.args)? {
         Value::String(value) => Ok(Value::from(STANDARD.encode(value))),

@@ -66,8 +66,13 @@ That is 14 crates instead of 30. `keys`, `values`, `len`, the string and array b
 arithmetic and comparison operators, and `?:` / `??` / pipes are all in the base: they need
 nothing but the parser.
 
-An expression that reaches a builtin whose feature is off gets an error naming the feature,
-rather than a wrong answer — the grammar has no features, so `matches` still parses.
+The grammar has no features, so an expression using a disabled builtin still parses — and says
+which feature it needs rather than looking like a typo or a wrong answer:
+
+```
+fromJSON() requires expr-lang's `json` feature
+the `matches` operator requires the `regex` feature
+```
 
 ### Serde integration
 

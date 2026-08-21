@@ -75,6 +75,12 @@ impl<'a> Environment<'a> {
         string::add_string_functions(&mut p);
         #[cfg(feature = "temporal")]
         crate::functions::temporal::add_temporal_functions(&mut p);
+        #[cfg(not(feature = "temporal"))]
+        crate::functions::add_disabled_functions(
+            &mut p,
+            "temporal",
+            &["now", "date", "duration", "timezone"],
+        );
         array::add_array_functions(&mut p);
         bitwise::add_bitwise_functions(&mut p);
         collection::add_collection_functions(&mut p);

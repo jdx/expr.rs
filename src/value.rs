@@ -224,7 +224,7 @@ impl Display for TimezoneValue {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "temporal"))]
 mod timezone_tests {
     use super::*;
 

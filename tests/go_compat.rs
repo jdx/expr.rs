@@ -1,3 +1,13 @@
+//! Parity with the Go implementation, over the whole language — so it needs the whole
+//! language. With a builtin's feature off there is nothing here to compare against; the lean
+//! build's own contract is tested in `src/test.rs`.
+#![cfg(all(
+    feature = "base64",
+    feature = "json",
+    feature = "regex",
+    feature = "temporal"
+))]
+
 use expr::{eval, Context, Value as ExprValue};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;

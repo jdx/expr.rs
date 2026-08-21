@@ -64,6 +64,9 @@ serde_json = { version = "1", features = ["preserve_order"], optional = true }
 test-log = "0.2"
 proptest = "1"
 serde = "1"
+# For tests only, and unconditionally: `serde.rs`'s tests read JSON to build a `Value` to
+# round-trip, which has nothing to do with whether the `json` builtins are compiled in.
+serde_json = "1"
 
 [profile.dev]
 debug = 1

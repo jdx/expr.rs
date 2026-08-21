@@ -75,6 +75,11 @@ fn value_to_json(value: &Value) -> Result<serde_json::Value> {
 }
 
 pub fn add_json_functions(env: &mut Environment) {
+    // `keys`, `values` and `len` are in this module too and are not JSON: they read a map or
+    // an array and need no crate to do it, so only the codec follows the feature.
+    #[cfg(not(feature = "json"))]
+    super::add_disabled_functions(env, "json", &["fromJSON", "toJSON"]);
+
     // fromJSON(string) -> Value
     // Parses a JSON string and returns the corresponding Value
     #[cfg(feature = "json")]

@@ -20,14 +20,21 @@ run = [
 # own, and the empty set — the evaluator with no builtins that need a crate — first.
 [tasks."lint:features"]
 run = [
-  "cargo clippy --lib --no-default-features -- -D warnings",
-  "cargo clippy --lib --no-default-features -F base64 -- -D warnings",
-  "cargo clippy --lib --no-default-features -F json -- -D warnings",
-  "cargo clippy --lib --no-default-features -F regex -- -D warnings",
-  "cargo clippy --lib --no-default-features -F temporal -- -D warnings",
-  "cargo clippy --lib --no-default-features -F serde -- -D warnings",
-  "cargo clippy --lib --no-default-features -F serde,temporal -- -D warnings",
-  "cargo clippy --lib --no-default-features -F json,temporal -- -D warnings",
+  "cargo clippy --all-targets --no-default-features -- -D warnings",
+  "cargo clippy --all-targets --no-default-features -F base64 -- -D warnings",
+  "cargo clippy --all-targets --no-default-features -F json -- -D warnings",
+  "cargo clippy --all-targets --no-default-features -F regex -- -D warnings",
+  "cargo clippy --all-targets --no-default-features -F temporal -- -D warnings",
+  "cargo clippy --all-targets --no-default-features -F serde -- -D warnings",
+  "cargo clippy --all-targets --no-default-features -F serde,temporal -- -D warnings",
+  "cargo clippy --all-targets --no-default-features -F json,temporal -- -D warnings",
+  # And run them: the tests for what a disabled feature *says* only compile when it is off,
+  # so `cargo test --all-features` can never reach them.
+  "cargo test --no-default-features",
+  "cargo test --no-default-features -F json",
+  "cargo test --no-default-features -F regex",
+  "cargo test --no-default-features -F temporal",
+  "cargo test --no-default-features -F serde",
 ]
 
 [tasks.test]

@@ -183,8 +183,11 @@ fn string() -> Result<()> {
     test_old!(r#""foo" <= "foo""#, "true");
     test_old!(r#""bar" >= "foo""#, "false");
     test_old!(r#""foo" >= "foo""#, "true");
-    test_old!(r#""foo" matches "^f""#, "true");
-    test_old!(r#""foo" matches "^x""#, "false");
+    #[cfg(feature = "regex")]
+    {
+        test_old!(r#""foo" matches "^f""#, "true");
+        test_old!(r#""foo" matches "^x""#, "false");
+    }
     test_old!(
         r#"`foo
 bar`"#,
@@ -193,6 +196,7 @@ bar`"#,
     Ok(())
 }
 
+#[cfg(feature = "regex")]
 #[test]
 fn dynamic_matches() -> Result<()> {
     let ctx = Context::from_iter([("pattern", "^f")]);
@@ -256,6 +260,7 @@ fn map() -> Result<()> {
 #[test]
 fn context() -> Result<()> {
     let ctx = Context::from_iter([("Version".to_string(), "v1.0.0".to_string())]);
+    #[cfg(feature = "regex")]
     assert_eq!(
         eval(r#"Version matches "^v\\d+\\.\\d+\\.\\d+""#, &ctx)?
             .to_string(),
@@ -541,6 +546,7 @@ test!(
     "true"
 );
 
+#[cfg(feature = "regex")]
 test!(
     precedence_matches_vs_and,
     r#""foo123" matches "^1" and "123foo" matches "^1""#,
@@ -560,24 +566,41 @@ test!(
 );
 
 // fromJSON tests
+#[cfg(feature = "json")]
 test!(from_json_object, r#"fromJSON("{\"foo\": \"bar\"}")"#, "{{foo: \"bar\"}}");
+#[cfg(feature = "json")]
 test!(from_json_object_access, r#"fromJSON("{\"foo\": \"bar\"}").foo"#, r#""bar""#);
+#[cfg(feature = "json")]
 test!(from_json_array, r#"fromJSON("[1, 2, 3]")"#, "[1, 2, 3]");
+#[cfg(feature = "json")]
 test!(from_json_number, r#"fromJSON("123")"#, "123");
+#[cfg(feature = "json")]
 test!(from_json_float, r#"fromJSON("1.5")"#, "1.5");
+#[cfg(feature = "json")]
 test!(from_json_true, r#"fromJSON("true")"#, "true");
+#[cfg(feature = "json")]
 test!(from_json_false, r#"fromJSON("false")"#, "false");
+#[cfg(feature = "json")]
 test!(from_json_null, r#"fromJSON("null")"#, "nil");
+#[cfg(feature = "json")]
 test!(from_json_string, r#"fromJSON("\"hello\"")"#, r#""hello""#);
+#[cfg(feature = "json")]
 test!(from_json_nested, r#"fromJSON("{\"a\": {\"b\": 1}}").a.b"#, "1");
+#[cfg(feature = "json")]
 test!(from_json_array_access, r#"fromJSON("[1, 2, 3]")[1]"#, "2");
 
 // toJSON tests
+#[cfg(feature = "json")]
 test!(to_json_array, r#"toJSON([1, 2, 3])"#, r#""[1,2,3]""#);
+#[cfg(feature = "json")]
 test!(to_json_number, r#"toJSON(123)"#, r#""123""#);
+#[cfg(feature = "json")]
 test!(to_json_float, r#"toJSON(1.5)"#, r#""1.5""#);
+#[cfg(feature = "json")]
 test!(to_json_true, r#"toJSON(true)"#, r#""true""#);
+#[cfg(feature = "json")]
 test!(to_json_false, r#"toJSON(false)"#, r#""false""#);
+#[cfg(feature = "json")]
 test!(to_json_nil, r#"toJSON(nil)"#, r#""null""#);
 
 // keys tests
@@ -587,6 +610,7 @@ test!(keys_single, r#"keys({a: 1})"#, r#"["a"]"#);
 
 // Test that JSON keys preserve insertion order (not alphabetical)
 // This is critical for version lists where "0.40.0" should come after "0.39.0", not before "0.5.0"
+#[cfg(feature = "json")]
 test!(
     keys_preserve_insertion_order,
     r#"keys(fromJSON("{\"z\": 1, \"a\": 2, \"m\": 3}"))"#,
@@ -627,3 +651,45 @@ proptest! {
 
 // pipe tests
 test!(pipe_sort, r#"[3, 1, 2] | sort()"#, "[1, 2, 3]");
+
+// What a disabled feature says. These compile only when the feature is off, which
+// `mise run lint:features` is what exercises — `cargo test --all-features` cannot reach them.
+#[cfg(not(feature = "json"))]
+#[test]
+fn a_disabled_json_builtin_names_its_feature() {
+    let err = eval("fromJSON('{}')", &Context::default()).expect_err("json is off");
+    assert!(
+        err.to_string().contains("requires expr-lang's `json` feature"),
+        "{err}"
+    );
+}
+
+#[cfg(not(feature = "base64"))]
+#[test]
+fn a_disabled_base64_builtin_names_its_feature() {
+    let err = eval("toBase64('hi')", &Context::default()).expect_err("base64 is off");
+    assert!(
+        err.to_string().contains("requires expr-lang's `base64` feature"),
+        "{err}"
+    );
+}
+
+#[cfg(not(feature = "temporal"))]
+#[test]
+fn disabled_temporal_names_its_feature_for_builtins_and_methods() {
+    let err = eval("now()", &Context::default()).expect_err("temporal is off");
+    assert!(
+        err.to_string().contains("requires expr-lang's `temporal` feature"),
+        "{err}"
+    );
+    // Methods are the other half: the grammar still parses `.Year()`.
+    let err = eval("'x'.Year()", &Context::default()).expect_err("temporal is off");
+    assert!(err.to_string().contains("`temporal` feature"), "{err}");
+}
+
+#[cfg(not(feature = "regex"))]
+#[test]
+fn a_disabled_matches_operator_names_its_feature() {
+    let err = eval("'a' matches 'a'", &Context::default()).expect_err("regex is off");
+    assert!(err.to_string().contains("`regex` feature"), "{err}");
+}
