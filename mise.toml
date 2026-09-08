@@ -3,7 +3,7 @@
 "cargo:pest_fmt" = "latest"
 git-cliff = "latest"
 watchexec = "latest"
-"github:jdx/tak" = "0.0.7"
+"github:jdx/tak" = "0.0.9"
 
 [settings]
 cargo.binstall_native = true
