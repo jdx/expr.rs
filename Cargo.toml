@@ -2,7 +2,7 @@
 name = "expr-lang"
 version = "2.1.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.88"
 authors = ["@jdx"]
 license = "MIT"
 documentation = "https://docs.rs/expr-lang"
