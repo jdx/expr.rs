@@ -22,8 +22,8 @@ jobs:
       - run: cargo test --all-features
       - run: mise lint
       - run: cargo package
-      - run: rustup toolchain install 1.85.0 --profile minimal
-      - run: cargo +1.85.0 test --all-features
+      - run: rustup toolchain install 1.88.0 --profile minimal
+      - run: cargo +1.88.0 test --all-features
 
   semver:
     if: github.event_name == 'pull_request'
