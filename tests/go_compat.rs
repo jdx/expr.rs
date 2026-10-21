@@ -158,3 +158,29 @@ fn map_literal_computed_values() {
         assert_eq!(got, expr::Value::Integer(n), "{src}");
     }
 }
+
+#[test]
+fn map_literal_in_predicates() {
+    let mut ctx = expr::Context::default();
+    ctx.insert("x", 10);
+    for (src, expected) in [
+        (r#"map([1, 2], {"n": #})"#, vec![1, 2]),
+        (r#"map([1, 2], {"n": # * x})"#, vec![10, 20]),
+        (r#"map([1, 2], {"n": #, "m": map([3], # * 2)[0]})"#, vec![1, 2]),
+    ] {
+        let v = expr::eval(src, &ctx).unwrap_or_else(|e| panic!("{src}: {e}"));
+        let expr::Value::Array(items) = v else { panic!("{src}: not an array") };
+        let got: Vec<i64> = items
+            .iter()
+            .map(|m| match m {
+                expr::Value::Map(m) => match m["n"] {
+                    expr::Value::Integer(i) => i,
+                    ref o => panic!("{src}: {o:?}"),
+                },
+                expr::Value::Integer(i) => *i,
+                o => panic!("{src}: {o:?}"),
+            })
+            .collect();
+        assert_eq!(got, expected, "{src}");
+    }
+}
