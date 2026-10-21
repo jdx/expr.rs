@@ -184,3 +184,12 @@ fn map_literal_in_predicates() {
         assert_eq!(got, expected, "{src}");
     }
 }
+
+#[test]
+fn map_literal_duplicate_keys_still_evaluated() {
+    let mut ctx = expr::Context::default();
+    ctx.insert("x", 1);
+    assert!(expr::eval(r#"{"n": missing, "n": x}"#, &ctx).is_err());
+    let v = expr::eval(r#"{"n": 0, "n": x + 1}.n"#, &ctx).unwrap();
+    assert_eq!(v, expr::Value::Integer(2));
+}

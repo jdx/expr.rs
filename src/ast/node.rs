@@ -190,7 +190,7 @@ impl From<Pair<'_, Rule>> for Node {
             },
             Rule::array => Node::Array(pair.into_inner().map(|p| p.into()).collect()),
             Rule::map => {
-                let mut map = IndexMap::new();
+                let mut entries = Vec::new();
                 let vals = pair.clone();
                 for (key, val) in pair
                     .into_inner()
@@ -202,11 +202,14 @@ impl From<Pair<'_, Rule>> for Node {
                         Rule::string => Value::from(key).as_string().unwrap().to_string(),
                         rule => unreachable!("Unexpected map key: {rule:?}"),
                     };
-                    map.insert(key, Node::from(val));
+                    entries.push((key, Node::from(val)));
                 }
-                if map.values().all(|v| matches!(v, Node::Value(_))) {
+                // Keep repeated keys until evaluation so every value expression
+                // is still evaluated (and can error), as in Go's parser.
+                if entries.iter().all(|(_, v)| matches!(v, Node::Value(_))) {
                     Node::Value(Value::Map(
-                        map.into_iter()
+                        entries
+                            .into_iter()
                             .map(|(k, v)| match v {
                                 Node::Value(v) => (k, v),
                                 _ => unreachable!(),
@@ -214,7 +217,7 @@ impl From<Pair<'_, Rule>> for Node {
                             .collect(),
                     ))
                 } else {
-                    Node::Map(map.into_iter().collect())
+                    Node::Map(entries)
                 }
             }
             rule => unreachable!("Unexpected rule: {rule:?}"),
