@@ -12,6 +12,7 @@ use crate::ast::program::Program;
 pub enum Node {
     Ident(String),
     Array(Vec<Node>),
+    Map(Vec<(String, Node)>),
     Range(Box<Node>, Box<Node>),
     Value(Value),
     Func { ident: String, args: Vec<Node>, predicate: Option<Box<Program>> },
@@ -55,6 +56,7 @@ impl Node {
                 args.iter().any(|a| a.contains_hash_ident())
             }
             Node::Array(items) => items.iter().any(|i| i.contains_hash_ident()),
+            Node::Map(entries) => entries.iter().any(|(_, v)| v.contains_hash_ident()),
             Node::Range(a, b) => a.contains_hash_ident() || b.contains_hash_ident(),
             Node::Conditional { condition, consequent, alternative } => {
                 condition.contains_hash_ident()
@@ -200,9 +202,20 @@ impl From<Pair<'_, Rule>> for Node {
                         Rule::string => Value::from(key).as_string().unwrap().to_string(),
                         rule => unreachable!("Unexpected map key: {rule:?}"),
                     };
-                    map.insert(key, val.into_inner().into());
+                    map.insert(key, Node::from(val));
                 }
-                Node::Value(Value::Map(map))
+                if map.values().all(|v| matches!(v, Node::Value(_))) {
+                    Node::Value(Value::Map(
+                        map.into_iter()
+                            .map(|(k, v)| match v {
+                                Node::Value(v) => (k, v),
+                                _ => unreachable!(),
+                            })
+                            .collect(),
+                    ))
+                } else {
+                    Node::Map(map.into_iter().collect())
+                }
             }
             rule => unreachable!("Unexpected rule: {rule:?}"),
         }

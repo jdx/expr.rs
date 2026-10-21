@@ -214,6 +214,12 @@ impl<'a> Environment<'a> {
                     .map(|e| self.eval_expr(ctx, e))
                     .collect::<Result<_>>()?,
             ), // node => bail!("unexpected node: {node:?}"),
+            Node::Map(entries) => Value::Map(
+                entries
+                    .iter()
+                    .map(|(k, v)| Ok((k.clone(), self.eval_expr(ctx, v)?)))
+                    .collect::<Result<_>>()?,
+            ),
             Node::Range(start, end) => {
                 match (self.eval_expr(ctx, start)?, self.eval_expr(ctx, end)?) {
                     (Value::Integer(start), Value::Integer(end)) => {

@@ -138,3 +138,23 @@ fn matches_go_expr_v1_17_8_corpus() {
         );
     }
 }
+
+#[test]
+fn map_literal_computed_values() {
+    let mut ctx = expr::Context::default();
+    ctx.insert("x", 1);
+    for (src, n) in [
+        (r#"{"n": 1 + 1}"#, 2),
+        (r#"{"n": x}"#, 1),
+        (r#"{"n": -1}"#, -1),
+        (r#"{"n": (1 + 1)}"#, 2),
+        (r#"{"a": {"n": x + 1}}.a.n"#, 2),
+    ] {
+        let v = expr::eval(src, &ctx).unwrap_or_else(|e| panic!("{src}: {e}"));
+        let got = match &v {
+            expr::Value::Map(m) => m["n"].clone(),
+            v => v.clone(),
+        };
+        assert_eq!(got, expr::Value::Integer(n), "{src}");
+    }
+}
