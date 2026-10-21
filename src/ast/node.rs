@@ -1,4 +1,3 @@
-use indexmap::IndexMap;
 use crate::ast::operator::Operator;
 use crate::ast::postfix_operator::PostfixOperator;
 use crate::ast::unary_operator::UnaryOperator;
