@@ -1,4 +1,3 @@
-use indexmap::IndexMap;
 use crate::ast::operator::Operator;
 use crate::ast::postfix_operator::PostfixOperator;
 use crate::ast::unary_operator::UnaryOperator;
@@ -12,6 +11,7 @@ use crate::ast::program::Program;
 pub enum Node {
     Ident(String),
     Array(Vec<Node>),
+    Map(Vec<(String, Node)>),
     Range(Box<Node>, Box<Node>),
     Value(Value),
     Func { ident: String, args: Vec<Node>, predicate: Option<Box<Program>> },
@@ -55,6 +55,7 @@ impl Node {
                 args.iter().any(|a| a.contains_hash_ident())
             }
             Node::Array(items) => items.iter().any(|i| i.contains_hash_ident()),
+            Node::Map(entries) => entries.iter().any(|(_, v)| v.contains_hash_ident()),
             Node::Range(a, b) => a.contains_hash_ident() || b.contains_hash_ident(),
             Node::Conditional { condition, consequent, alternative } => {
                 condition.contains_hash_ident()
@@ -188,7 +189,7 @@ impl From<Pair<'_, Rule>> for Node {
             },
             Rule::array => Node::Array(pair.into_inner().map(|p| p.into()).collect()),
             Rule::map => {
-                let mut map = IndexMap::new();
+                let mut entries = Vec::new();
                 let vals = pair.clone();
                 for (key, val) in pair
                     .into_inner()
@@ -200,9 +201,23 @@ impl From<Pair<'_, Rule>> for Node {
                         Rule::string => Value::from(key).as_string().unwrap().to_string(),
                         rule => unreachable!("Unexpected map key: {rule:?}"),
                     };
-                    map.insert(key, val.into_inner().into());
+                    entries.push((key, Node::from(val)));
                 }
-                Node::Value(Value::Map(map))
+                // Keep repeated keys until evaluation so every value expression
+                // is still evaluated (and can error), as in Go's parser.
+                if entries.iter().all(|(_, v)| matches!(v, Node::Value(_))) {
+                    Node::Value(Value::Map(
+                        entries
+                            .into_iter()
+                            .map(|(k, v)| match v {
+                                Node::Value(v) => (k, v),
+                                _ => unreachable!(),
+                            })
+                            .collect(),
+                    ))
+                } else {
+                    Node::Map(entries)
+                }
             }
             rule => unreachable!("Unexpected rule: {rule:?}"),
         }

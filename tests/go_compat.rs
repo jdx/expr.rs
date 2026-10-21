@@ -138,3 +138,58 @@ fn matches_go_expr_v1_17_8_corpus() {
         );
     }
 }
+
+#[test]
+fn map_literal_computed_values() {
+    let mut ctx = expr::Context::default();
+    ctx.insert("x", 1);
+    for (src, n) in [
+        (r#"{"n": 1 + 1}"#, 2),
+        (r#"{"n": x}"#, 1),
+        (r#"{"n": -1}"#, -1),
+        (r#"{"n": (1 + 1)}"#, 2),
+        (r#"{"a": {"n": x + 1}}.a.n"#, 2),
+    ] {
+        let v = expr::eval(src, &ctx).unwrap_or_else(|e| panic!("{src}: {e}"));
+        let got = match &v {
+            expr::Value::Map(m) => m["n"].clone(),
+            v => v.clone(),
+        };
+        assert_eq!(got, expr::Value::Integer(n), "{src}");
+    }
+}
+
+#[test]
+fn map_literal_in_predicates() {
+    let mut ctx = expr::Context::default();
+    ctx.insert("x", 10);
+    for (src, expected) in [
+        (r#"map([1, 2], {"n": #})"#, vec![1, 2]),
+        (r#"map([1, 2], {"n": # * x})"#, vec![10, 20]),
+        (r#"map([1, 2], {"n": #, "m": map([3], # * 2)[0]})"#, vec![1, 2]),
+    ] {
+        let v = expr::eval(src, &ctx).unwrap_or_else(|e| panic!("{src}: {e}"));
+        let expr::Value::Array(items) = v else { panic!("{src}: not an array") };
+        let got: Vec<i64> = items
+            .iter()
+            .map(|m| match m {
+                expr::Value::Map(m) => match m["n"] {
+                    expr::Value::Integer(i) => i,
+                    ref o => panic!("{src}: {o:?}"),
+                },
+                expr::Value::Integer(i) => *i,
+                o => panic!("{src}: {o:?}"),
+            })
+            .collect();
+        assert_eq!(got, expected, "{src}");
+    }
+}
+
+#[test]
+fn map_literal_duplicate_keys_still_evaluated() {
+    let mut ctx = expr::Context::default();
+    ctx.insert("x", 1);
+    assert!(expr::eval(r#"{"n": missing, "n": x}"#, &ctx).is_err());
+    let v = expr::eval(r#"{"n": 0, "n": x + 1}.n"#, &ctx).unwrap();
+    assert_eq!(v, expr::Value::Integer(2));
+}
