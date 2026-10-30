@@ -5,6 +5,19 @@
 
 - Make the dependency tree optional ([#110](https://github.com/jdx/expr.rs/pull/110))
 
+# Changelog
+
+
+### Bug Fixes
+
+- Evaluate computed values in map literals ([#136](https://github.com/jdx/expr.rs/pull/136))
+
+### Miscellaneous
+
+- Raise MSRV to 1.88 ([#134](https://github.com/jdx/expr.rs/pull/134))
+- *(deps)* Update rust crate proptest to v1.12.0 ([#133](https://github.com/jdx/expr.rs/pull/133))
+- *(deps)* Lock file maintenance ([#138](https://github.com/jdx/expr.rs/pull/138))
+
 
 ## [2.0.0] - 2026-08-19
 

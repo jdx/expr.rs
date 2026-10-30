@@ -268,7 +268,7 @@ dependencies = [
 
 [[package]]
 name = "expr-lang"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "base64",
  "chrono",
