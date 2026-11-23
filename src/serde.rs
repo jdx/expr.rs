@@ -76,6 +76,7 @@ pub struct ValueSerializer {}
 macro_rules! serialize_fn {
     ($name:ident, $type:ty, $cast_type:ty) => {
         #[inline]
+        #[allow(unreachable_code)]
         fn $name(self, v: $type) -> Result<Self::Ok, Self::Error> {
             Ok(Value::from(<$cast_type>::try_from(v).map_err(|e|
                 Error::SerializeError(e.to_string())
