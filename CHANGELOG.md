@@ -5,6 +5,25 @@
 
 - Make the dependency tree optional ([#110](https://github.com/jdx/expr.rs/pull/110))
 
+# Changelog
+
+
+### Bug Fixes
+
+- Evaluate computed values in map literals ([#136](https://github.com/jdx/expr.rs/pull/136))
+- *(serde)* Allow unreachable error path in integer serializers ([#145](https://github.com/jdx/expr.rs/pull/145))
+
+### Miscellaneous
+
+- Raise MSRV to 1.88 ([#134](https://github.com/jdx/expr.rs/pull/134))
+- *(deps)* Update rust crate proptest to v1.12.0 ([#133](https://github.com/jdx/expr.rs/pull/133))
+- *(deps)* Lock file maintenance ([#138](https://github.com/jdx/expr.rs/pull/138))
+- *(deps)* Lock file maintenance ([#140](https://github.com/jdx/expr.rs/pull/140))
+- *(deps)* Lock file maintenance ([#141](https://github.com/jdx/expr.rs/pull/141))
+- *(deps)* Update rust crates to v2.9.6 ([#143](https://github.com/jdx/expr.rs/pull/143))
+- *(deps)* Lock file maintenance ([#144](https://github.com/jdx/expr.rs/pull/144))
+- Fix beta clippy lints ([#146](https://github.com/jdx/expr.rs/pull/146))
+
 
 ## [2.0.0] - 2026-08-19
 
