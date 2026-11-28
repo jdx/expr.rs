@@ -44,53 +44,6 @@ fn validate_numeric_literals(pairs: Pairs<'_, Rule>) -> Result<()> {
     Ok(())
 }
 
-#[cfg(test)]
-mod literal_tests {
-    use super::compile;
-
-    #[test]
-    fn rejects_malformed_integer_separators() {
-        for code in ["1__0", "1_", "0x_2A_", "0b1__0"] {
-            assert!(compile(code).is_err(), "{code} should be rejected");
-        }
-    }
-
-    #[test]
-    fn rejects_integer_overflow_without_panicking() {
-        assert!(compile("0x10000000000000000").is_err());
-        assert!(compile("9223372036854775808").is_err());
-    }
-
-    #[test]
-    fn accepts_scientific_float_literals() {
-        for code in ["1e3", "1.2e-4", ".5e+2", "1_000.5_0e-2"] {
-            assert!(compile(code).is_ok(), "{code} should be accepted");
-        }
-    }
-
-    #[test]
-    fn rejects_malformed_or_overflowing_float_literals() {
-        for code in ["1e", "1e+", "1e_2", "1e9999"] {
-            assert!(compile(code).is_err(), "{code} should be rejected");
-        }
-    }
-
-    #[test]
-    fn rejects_raw_newlines_in_interpreted_literals() {
-        for code in ["\"a\nb\"", "'a\rb'", "b\"a\nb\"", "b'a\rb'"] {
-            assert!(compile(code).is_err(), "{code:?} should be rejected");
-        }
-        assert!(compile("`a\nb`").is_ok());
-    }
-
-    #[test]
-    fn conditional_keywords_require_identifier_boundaries() {
-        assert!(compile("if true { 1 } else { 2 }").is_ok());
-        assert!(compile("ifx { 1 } else { 2 }").is_err());
-        assert!(compile("if true { 1 } elseif { 2 }").is_err());
-    }
-}
-
 /// Main struct for parsing and evaluating expr programs
 ///
 /// Example:
@@ -178,5 +131,52 @@ impl<'a> Parser<'a> {
 
     pub fn eval_expr(&self, ctx: &dyn ContextProvider, node: &Node) -> Result<Value> {
         self.env.eval_expr(ctx, node)
+    }
+}
+
+#[cfg(test)]
+mod literal_tests {
+    use super::compile;
+
+    #[test]
+    fn rejects_malformed_integer_separators() {
+        for code in ["1__0", "1_", "0x_2A_", "0b1__0"] {
+            assert!(compile(code).is_err(), "{code} should be rejected");
+        }
+    }
+
+    #[test]
+    fn rejects_integer_overflow_without_panicking() {
+        assert!(compile("0x10000000000000000").is_err());
+        assert!(compile("9223372036854775808").is_err());
+    }
+
+    #[test]
+    fn accepts_scientific_float_literals() {
+        for code in ["1e3", "1.2e-4", ".5e+2", "1_000.5_0e-2"] {
+            assert!(compile(code).is_ok(), "{code} should be accepted");
+        }
+    }
+
+    #[test]
+    fn rejects_malformed_or_overflowing_float_literals() {
+        for code in ["1e", "1e+", "1e_2", "1e9999"] {
+            assert!(compile(code).is_err(), "{code} should be rejected");
+        }
+    }
+
+    #[test]
+    fn rejects_raw_newlines_in_interpreted_literals() {
+        for code in ["\"a\nb\"", "'a\rb'", "b\"a\nb\"", "b'a\rb'"] {
+            assert!(compile(code).is_err(), "{code:?} should be rejected");
+        }
+        assert!(compile("`a\nb`").is_ok());
+    }
+
+    #[test]
+    fn conditional_keywords_require_identifier_boundaries() {
+        assert!(compile("if true { 1 } else { 2 }").is_ok());
+        assert!(compile("ifx { 1 } else { 2 }").is_err());
+        assert!(compile("if true { 1 } elseif { 2 }").is_err());
     }
 }
